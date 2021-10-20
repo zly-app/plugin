@@ -25,9 +25,14 @@ func (z *ZipKinPlugin) Inject(a ...interface{}) {}
 
 func (z *ZipKinPlugin) Start() error {
 	var conf Config
-	err := z.app.GetConfig().ParsePluginConfig(nowPluginType, &conf)
-	if err != nil {
-		return err
+	key := "plugins." + string(nowPluginType)
+
+	vi := z.app.GetConfig().GetViper()
+	if vi.IsSet(key) {
+		err := vi.UnmarshalKey(key, &conf)
+		if err != nil {
+			return fmt.Errorf("无法解析<%s>插件配置: %s", nowPluginType, err)
+		}
 	}
 
 	if conf.ApiUrl == "" {
