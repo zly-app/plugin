@@ -1,7 +1,6 @@
 package zipkin
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/opentracing/opentracing-go"
@@ -9,6 +8,7 @@ import (
 	"github.com/openzipkin/zipkin-go"
 	zipkin_model "github.com/openzipkin/zipkin-go/model"
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
+	"go.uber.org/zap"
 
 	"github.com/zly-app/zapp/core"
 )
@@ -18,20 +18,15 @@ type ZipKinPlugin struct {
 }
 
 func NewZipKinPlugin(app core.IApp) core.IPlugin {
-	return &ZipKinPlugin{app}
-}
-
-func (z *ZipKinPlugin) Inject(a ...interface{}) {}
-
-func (z *ZipKinPlugin) Start() error {
 	var conf Config
-	key := "plugins." + string(nowPluginType)
 
-	vi := z.app.GetConfig().GetViper()
+	// 解析配置
+	key := "plugins." + string(nowPluginType)
+	vi := app.GetConfig().GetViper()
 	if vi.IsSet(key) {
 		err := vi.UnmarshalKey(key, &conf)
 		if err != nil {
-			return fmt.Errorf("无法解析<%s>插件配置: %s", nowPluginType, err)
+			app.Fatal("无法解析插件配置", zap.String("PluginType", string(nowPluginType)), zap.Error(err))
 		}
 	}
 
@@ -41,26 +36,27 @@ func (z *ZipKinPlugin) Start() error {
 	if conf.IP == "" {
 		conf.IP = defaultIP
 	}
-	return z.InitTracer(&conf)
-}
 
-func (z *ZipKinPlugin) Close() error {
-	return nil
-}
-
-func (z *ZipKinPlugin) InitTracer(conf *Config) error {
 	reporter := zipkinhttp.NewReporter(conf.ApiUrl)
 	endpoint := &zipkin_model.Endpoint{
-		ServiceName: z.app.Name(),
+		ServiceName: app.Name(),
 		IPv4:        net.ParseIP(conf.IP),
 		Port:        conf.Port,
 	}
 	nativeTracer, err := zipkin.NewTracer(reporter, zipkin.WithLocalEndpoint(endpoint))
 	if err != nil {
-		return fmt.Errorf("无法创建zipkin跟踪程序: %+v\n", err)
+		app.Fatal("无法创建zipkin跟踪程序", zap.Error(err))
 	}
-
 	tracer := zipkinot.Wrap(nativeTracer)
 	opentracing.SetGlobalTracer(tracer)
+
+	return &ZipKinPlugin{app}
+}
+
+func (z *ZipKinPlugin) Inject(a ...interface{}) {}
+
+func (z *ZipKinPlugin) Start() error { return nil }
+
+func (z *ZipKinPlugin) Close() error {
 	return nil
 }
