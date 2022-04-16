@@ -162,7 +162,7 @@ func (h *HoneyPlugin) Interceptor(ent *zapcore.Entry, fields []zapcore.Field) (c
 		Level:   ent.Level.String(),
 		Msg:     ent.Message,
 		Fields:  "",
-		Line:    "",
+		Line:    fmt.Sprintf("%s:%d,%s", ent.Caller.File, ent.Caller.Line, ent.Caller.Function),
 		TraceID: traceID,
 	}
 
