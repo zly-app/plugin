@@ -10,21 +10,26 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/zly-app/zapp"
-	"github.com/zly-app/zapp/config"
+	zapp_config "github.com/zly-app/zapp/config"
 	"github.com/zly-app/zapp/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/zly-app/plugin/honey/config"
+	"github.com/zly-app/plugin/honey/reporter"
 )
 
 var defHoney *HoneyPlugin
 var once sync.Once
 
 type HoneyPlugin struct {
-	conf       *Config
+	conf       *config.Config
 	ctxCancel  context.CancelFunc
 	logCache   chan []byte // 日志总缓存
 	batchCache chan []byte // 批次缓存
 	state      int32       // 启动状态 0未启动, 1已启动
+
+	reporter reporter.Reporter
 }
 
 func (h *HoneyPlugin) isStart() bool {
@@ -104,7 +109,7 @@ func (h *HoneyPlugin) rotateAndReport(block bool) {
 
 // 上报
 func (h *HoneyPlugin) report(data [][]byte) {
-
+	h.reporter.Report(data)
 }
 
 type LogData struct {
@@ -118,10 +123,10 @@ type LogData struct {
 
 func newHoneyPlugin() *HoneyPlugin {
 	once.Do(func() {
-		conf := newConfig()
+		conf := config.NewConfig()
 
 		// 解析配置
-		err := config.Conf.ParsePluginConfig(nowPluginType, conf)
+		err := zapp_config.Conf.ParsePluginConfig(nowPluginType, conf)
 		if err == nil {
 			err = conf.Check()
 		}
@@ -132,6 +137,7 @@ func newHoneyPlugin() *HoneyPlugin {
 			conf:       conf,
 			logCache:   make(chan []byte, conf.CacheLen),
 			batchCache: make(chan []byte, conf.BatchLen),
+			reporter:   reporter.MakeReporter(conf),
 		}
 	})
 	return defHoney

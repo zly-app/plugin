@@ -1,4 +1,4 @@
-package honey
+package config
 
 const (
 	// 默认最大缓存长度
@@ -9,6 +9,11 @@ const (
 	DefaultWaitReport = 3
 	// 默认上报重试次数
 	DefaultReportRetryCount = 2
+	// 默认压缩类型
+	DefaultCompressType = "zstd"
+
+	// 默认上报者类型
+	DefaultReportType = "stdout"
 )
 
 type Config struct {
@@ -20,9 +25,13 @@ type Config struct {
 	WaitReport       int  // 默认等待上报间隔时间(秒), 如果没有达到累计上报长度, 在指定时间后也会上报
 	ReportRetryCount int  // 上报重试次数
 	StopLogOutput    bool // 停止原有的日志输出
+
+	CompressType string // 压缩类型, 支持 zstd
+
+	ReportType string // 上报者类型, 支持 stdout
 }
 
-func newConfig() *Config {
+func NewConfig() *Config {
 	return &Config{
 		ReportRetryCount: DefaultReportRetryCount,
 	}
@@ -40,6 +49,12 @@ func (conf *Config) Check() error {
 	}
 	if conf.Instance == "" {
 
+	}
+	if conf.CompressType == "" {
+		conf.CompressType = DefaultCompressType
+	}
+	if conf.ReportType == "" {
+		conf.ReportType = DefaultReportType
 	}
 	return nil
 }
