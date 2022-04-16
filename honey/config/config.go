@@ -28,7 +28,11 @@ type Config struct {
 
 	CompressType string // 压缩类型, 支持 zstd
 
-	ReportType string // 上报者类型, 支持 stdout
+	ReportType string // 上报者类型, 支持 stdout, http
+	HttpReport struct {
+		Address string // 上报地址
+
+	} // http上报者
 }
 
 func NewConfig() *Config {
