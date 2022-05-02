@@ -3,7 +3,6 @@ package honey
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
@@ -83,7 +82,6 @@ func (h *HoneyPlugin) AfterClose() {
 	h.rotate.Rotate()
 
 	// 等待处理
-	time.Sleep(time.Second)
 	h.rotateGPool.Wait()
 
 	// 关闭输出设备
