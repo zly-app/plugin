@@ -3,6 +3,7 @@ package honey
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
@@ -62,14 +63,29 @@ func (h *HoneyPlugin) Start() {
 	atomic.StoreInt32(&h.state, 1)
 }
 
-func (h *HoneyPlugin) Close() {
+func (h *HoneyPlugin) BeforeAfterClose() {
 	atomic.StoreInt32(&h.state, 0)
+
 	if !h.isInit {
 		return
 	}
 
 	// 立即旋转
 	h.rotate.Rotate()
+}
+
+func (h *HoneyPlugin) AfterClose() {
+	if !h.isInit {
+		return
+	}
+
+	// 立即旋转
+	h.rotate.Rotate()
+
+	// 等待处理
+	time.Sleep(time.Second)
+	h.rotateGPool.Wait()
+
 	// 关闭输出设备
 	h.CloseOutput()
 }

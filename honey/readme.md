@@ -43,7 +43,11 @@ Env = 'dev'
 #MaxRotateThreadNum = 10
 # 输出设备列表, 多个输出设备用半角逗号`,`分隔, 支持 std, honey-http
 Outputs = 'std'
+```
 
+## honey-http 输出设备配置项
+
+```toml
 # honey-http输出设备配置项
 [plugins.honey.honey-http]
 # 关闭
@@ -56,6 +60,21 @@ Outputs = 'std'
 #Serializer = 'msgpack'
 # 验证token, 如何设置, 请求header必须带上 token={AuthToken}, 如 token=myAuthToken
 #AuthToken = ''
+# 请求超时, 单位秒
+#ReqTimeout = 5
+```
+
+## loki-http 输出设备配置项
+
+```toml
+# loki-http输出设备配置项
+[plugins.honey.loki-http]
+# 关闭
+#Disable = false
+# push地址, 示例: http://127.0.0.1:3100/loki/api/v1/push
+#PushAddress = 'http://127.0.0.1:3100/loki/api/v1/push'
+# 是否启用压缩
+#EnableCompress = true
 # 请求超时, 单位秒
 #ReqTimeout = 5
 ```

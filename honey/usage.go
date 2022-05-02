@@ -6,6 +6,7 @@ import (
 	"github.com/zly-app/zapp/pkg/zlog"
 
 	_ "github.com/zly-app/honey/output/honey-http"
+	_ "github.com/zly-app/honey/output/loki-http"
 	_ "github.com/zly-app/honey/output/std"
 )
 
@@ -28,6 +29,10 @@ func init() {
 	})
 	zapp.AddHandler(zapp.BeforeExitHandler, func(app core.IApp, handlerType zapp.HandlerType) {
 		h := NewHoneyPlugin()
-		h.Close()
+		h.BeforeAfterClose()
+	})
+	zapp.AddHandler(zapp.AfterExitHandler, func(app core.IApp, handlerType zapp.HandlerType) {
+		h := NewHoneyPlugin()
+		h.AfterClose()
 	})
 }
