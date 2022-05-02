@@ -9,17 +9,16 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/zly-app/honey/output"
+
 	"github.com/zly-app/honey/log_data"
 	"github.com/zly-app/honey/pkg/rotate"
 
-	"github.com/zly-app/plugin/honey/component"
 	"github.com/zly-app/plugin/honey/config"
-	"github.com/zly-app/plugin/honey/reporter"
 )
 
 type HoneyPlugin struct {
 	app    core.IApp
-	c      component.IComponent
 	conf   *config.Config
 	isInit bool  // 是否完成初始化
 	state  int32 // 启动状态 0未启动, 1已启动
@@ -27,7 +26,7 @@ type HoneyPlugin struct {
 	rotate      rotate.IRotator // 旋转器
 	rotateGPool core.IGPool     // 用于处理同时旋转的协程池
 
-	reporters map[string]reporter.IReporter // 上报器
+	outputs map[string]output.IOutput // 输出设备
 }
 
 func (h *HoneyPlugin) Init() {
@@ -55,12 +54,12 @@ func (h *HoneyPlugin) Start() {
 	if !h.isInit {
 		return
 	}
-	atomic.StoreInt32(&h.state, 1)
-	h.c = component.NewComponent(h.app.GetComponent())
 
-	// 启动上报者
-	h.MakeReporter()
-	h.StartReporter()
+	// 启动输出设备
+	h.MakeOutput()
+	h.StartOutput()
+
+	atomic.StoreInt32(&h.state, 1)
 }
 
 func (h *HoneyPlugin) Close() {
@@ -71,8 +70,8 @@ func (h *HoneyPlugin) Close() {
 
 	// 立即旋转
 	h.rotate.Rotate()
-	// 关闭上报者
-	h.CloseReporter()
+	// 关闭输出设备
+	h.CloseOutput()
 }
 
 // 日志拦截函数

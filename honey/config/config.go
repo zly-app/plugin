@@ -21,21 +21,21 @@ const (
 	// 默认最大旋转线程数
 	DefaultMaxRotateThreadNum = 10
 
-	// 默认上报者
-	DefaultReports = "std"
+	// 默认输出列表
+	DefaultOutputs = "std"
 )
 
 type Config struct {
-	Env           string // 上报时标示的环境名
-	Service       string // 上报时标示的服务名, 如果为空则使用app名
-	Instance      string // 上报时标示的实例名, 如果为空则使用本地ip
+	Env           string // 输出时标示的环境名
+	Service       string // 输出时标示的服务名, 如果为空则使用app名
+	Instance      string // 输出时标示的实例名, 如果为空则使用本地ip
 	StopLogOutput bool   // 停止原有的日志输出
 
-	LogBatchSize       int // 日志批次大小, 累计达到这个大小立即上报一次日志, 不用等待时间
-	AutoRotateTime     int // 自动旋转时间(秒), 如果没有达到累计上报批次大小, 在指定时间后也会立即上报
+	LogBatchSize       int // 日志批次大小, 累计达到这个大小立即输出一次日志, 不用等待时间
+	AutoRotateTime     int // 自动旋转时间(秒), 如果没有达到累计输出批次大小, 在指定时间后也会立即输出
 	MaxRotateThreadNum int // 最大旋转线程数, 表示同时允许多少批次发送到输出设备
 
-	Reports string // 上报者, 支持 std, http
+	Outputs string // 输出设备列表, 多个输出设备用半角逗号`,`分隔, 支持 std, honey-http
 }
 
 func NewConfig() *Config {
@@ -65,8 +65,8 @@ func (conf *Config) Check() error {
 		conf.MaxRotateThreadNum = DefaultMaxRotateThreadNum
 	}
 
-	if conf.Reports == "" {
-		conf.Reports = DefaultReports
+	if conf.Outputs == "" {
+		conf.Outputs = DefaultOutputs
 	}
 	return nil
 }

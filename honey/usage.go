@@ -5,8 +5,8 @@ import (
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/pkg/zlog"
 
-	_ "github.com/zly-app/plugin/honey/reporter/http"
-	_ "github.com/zly-app/plugin/honey/reporter/std"
+	_ "github.com/zly-app/honey/output/honey-http"
+	_ "github.com/zly-app/honey/output/std"
 )
 
 // 默认插件类型

@@ -37,8 +37,8 @@ func (h *HoneyPlugin) RotateCallback(a []interface{}) {
 
 	env, service, instance := h.conf.Env, h.conf.Service, h.conf.Instance
 
-	// 上报
-	for _, r := range h.reporters {
-		r.Report(env, service, instance, data)
+	// 输出
+	for _, r := range h.outputs {
+		r.Out(env, service, instance, data)
 	}
 }
