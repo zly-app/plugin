@@ -2,6 +2,7 @@ package jaeger
 
 import (
 	"io"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/zly-app/zapp/core"
@@ -39,10 +40,12 @@ func NewJaegerPlugin(app core.IApp) core.IPlugin {
 			Param: conf.SamplerParam,
 		},
 		Reporter: &config.ReporterConfig{
-			LogSpans:           true,
-			LocalAgentHostPort: conf.Address,
-			User:               conf.User,
-			Password:           conf.Password,
+			QueueSize:           conf.SpanBatchSize,
+			BufferFlushInterval: time.Duration(conf.AutoRotateTime) * time.Second,
+			LogSpans:            true, // 推送log信息
+			LocalAgentHostPort:  conf.Address,
+			User:                conf.User,
+			Password:            conf.Password,
 		},
 	}
 	tracer, closer, err := cfg.NewTracer()
