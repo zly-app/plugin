@@ -29,8 +29,8 @@ func main() {
 [plugins.honey]
 # 输出时标示的环境名
 Env = 'dev'
-# 输出时标示的服务名, 如果为空则使用app名
-#Service = ''
+# 输出时标示的app名, 如果为空则使用默认名
+#App = ''
 # 输出时标示的实例名, 如果为空则使用本地ip
 #Instance = ''
 # 停止原有的日志输出
@@ -41,7 +41,7 @@ Env = 'dev'
 #AutoRotateTime = 3
 # 最大旋转线程数, 表示同时允许多少批次发送到输出设备
 #MaxRotateThreadNum = 10
-# 输出设备列表, 多个输出设备用半角逗号`,`分隔, 支持 std, honey-http
+# 输出设备列表, 多个输出设备用半角逗号`,`分隔, 支持 std, honey-http, loki-http
 Outputs = 'std'
 ```
 
@@ -62,6 +62,16 @@ Outputs = 'std'
 #AuthToken = ''
 # 请求超时, 单位秒
 #ReqTimeout = 5
+# 请求失败重试次数, 0表示禁用
+#RetryCount = 2
+# 请求失败重试间隔毫秒数
+#RetryIntervalMs = 2000
+# 代理地址. 支持 http, https, socks5, socks5h. 示例: socks5://127.0.0.1:1080
+#ProxyAddress = ''
+# 代理用户名
+#ProxyUser = ''
+# 代理用户密码
+#ProxyPasswd = ''
 ```
 
 ## loki-http 输出设备配置项
@@ -77,4 +87,14 @@ Outputs = 'std'
 #EnableCompress = true
 # 请求超时, 单位秒
 #ReqTimeout = 5
+# 请求失败重试次数, 0表示禁用
+#RetryCount = 2
+# 请求失败重试间隔毫秒数
+#RetryIntervalMs = 2000
+# 代理地址. 支持 http, https, socks5, socks5h. 示例: socks5://127.0.0.1:1080
+#ProxyAddress = ''
+# 代理用户名
+#ProxyUser = ''
+# 代理用户密码
+#ProxyPasswd = ''
 ```

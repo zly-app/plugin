@@ -27,7 +27,7 @@ const (
 
 type Config struct {
 	Env           string // 输出时标示的环境名
-	Service       string // 输出时标示的服务名, 如果为空则使用app名
+	App           string // 输出时标示的app名, 如果为空则使用默认名
 	Instance      string // 输出时标示的实例名, 如果为空则使用本地ip
 	StopLogOutput bool   // 停止原有的日志输出
 
@@ -48,8 +48,8 @@ func (conf *Config) Check() error {
 	if conf.Env == "" {
 		conf.Env = DefaultEnv
 	}
-	if conf.Service == "" {
-		conf.Service = zapp.App().Name()
+	if conf.App == "" {
+		conf.App = zapp.App().Name()
 	}
 	if conf.Instance == "" {
 		conf.Instance = utils.GetInstance(DefaultInstance)

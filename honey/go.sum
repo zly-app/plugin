@@ -372,12 +372,14 @@ github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 h1:BHyfKlQyqbsFN5p3Ifn
 github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82/go.mod h1:lgjkn3NuSvDfVJdfcVVdX+jpBxNmX4rDAzaS45IcYoM=
 github.com/yudai/pp v2.0.1+incompatible/go.mod h1:PuxR/8QJ7cyCkFp/aUDS+JY727OFEZkTdatxwunjIkc=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-github.com/zly-app/honey v0.1.0 h1:/vCFV2xs4CyqeOgkGxKhYI0irwDnck8JOAXQqjBXTm4=
-github.com/zly-app/honey v0.1.0/go.mod h1:bBbw1kWUppqJ72R3ocIHUqFdzk0gGr9FOM0Oxm1rVgg=
+github.com/zly-app/honey v0.2.0 h1:7Y4rM0/i8XLDFI/0DQ/g/77dW1IUOtC01+rI5StzfWo=
+github.com/zly-app/honey v0.2.0/go.mod h1:aLzwWWENoFhh9x7QlkaHiMMA5YClGt9qYRP+01JEBTI=
 github.com/zly-app/service/api v0.0.0-20220430055931-779fb32fc812 h1:3ULBQicxfHKLGVElBX4pLSRITFP12pt66N3CtQRcXw0=
 github.com/zly-app/service/api v0.0.0-20220430055931-779fb32fc812/go.mod h1:XL0rAOnzZR5WDQqLiiUeKdLUXmEM5VjJBEPXdcIx8yg=
 github.com/zly-app/zapp v1.1.9 h1:AUaenWhKPgddFcxDxWMrxXsopaOAu2WVFQ/ITKl7vZQ=
 github.com/zly-app/zapp v1.1.9/go.mod h1:MszpwW6QqAhZZRAKo9UtzT4eaYXkyCMpGuRKBsHFYbw=
+github.com/zlyuancn/zretry v0.0.0-20220514032503-d78bfd22a441 h1:Sw0KI54iN5+zLL74vWx9R1o9S1yWc+f3oRKOjKrMCqA=
+github.com/zlyuancn/zretry v0.0.0-20220514032503-d78bfd22a441/go.mod h1:nXpt3JELMAirMyc5KExlSX96ixpohjHkxHpJlhqRnUU=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.3.5/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
