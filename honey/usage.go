@@ -27,6 +27,10 @@ func init() {
 		h := NewHoneyPlugin()
 		h.Start()
 	})
+	zapp.AddHandler(zapp.AfterStartHandler, func(app core.IApp, handlerType zapp.HandlerType) {
+		h := NewHoneyPlugin()
+		h.OnAppStart()
+	})
 	zapp.AddHandler(zapp.BeforeExitHandler, func(app core.IApp, handlerType zapp.HandlerType) {
 		h := NewHoneyPlugin()
 		h.BeforeAfterClose()

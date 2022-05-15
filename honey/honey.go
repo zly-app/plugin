@@ -18,10 +18,10 @@ import (
 )
 
 type HoneyPlugin struct {
-	app    core.IApp
-	conf   *config.Config
-	isInit bool  // 是否完成初始化
-	state  int32 // 启动状态 0未启动, 1已启动
+	app              core.IApp
+	conf             *config.Config
+	isInit           bool  // 是否完成初始化
+	interceptorState int32 // 拦截状态 0未启动, 1已启动
 
 	rotate      rotate.IRotator // 旋转器
 	rotateGPool core.IGPool     // 用于处理同时旋转的协程池
@@ -46,8 +46,9 @@ func (h *HoneyPlugin) Init() {
 	h.isInit = true
 }
 
-func (h *HoneyPlugin) isStart() bool {
-	return atomic.LoadInt32(&h.state) == 1
+// 是否拦截
+func (h *HoneyPlugin) isInterceptor() bool {
+	return atomic.LoadInt32(&h.interceptorState) == 1
 }
 
 func (h *HoneyPlugin) Start() {
@@ -58,12 +59,14 @@ func (h *HoneyPlugin) Start() {
 	// 启动输出设备
 	h.MakeOutput()
 	h.StartOutput()
+}
 
-	atomic.StoreInt32(&h.state, 1)
+func (h *HoneyPlugin) OnAppStart() {
+	atomic.StoreInt32(&h.interceptorState, 1)
 }
 
 func (h *HoneyPlugin) BeforeAfterClose() {
-	atomic.StoreInt32(&h.state, 0)
+	atomic.StoreInt32(&h.interceptorState, 0)
 
 	if !h.isInit {
 		return
@@ -92,7 +95,7 @@ func (h *HoneyPlugin) AfterClose() {
 func (h *HoneyPlugin) LogInterceptorFunc(ent *zapcore.Entry, fields []zapcore.Field) (cancel bool) {
 	log := log_data.MakeLogData(ent, fields)
 	h.rotate.Add(log)
-	return h.conf.StopLogOutput && h.isStart() // 设置了拦截并且在服务启动后才允许拦截
+	return h.conf.StopLogOutput && h.isInterceptor()
 }
 
 var honey *HoneyPlugin
