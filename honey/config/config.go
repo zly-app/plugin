@@ -41,6 +41,7 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		StopLogOutput: DefaultStopLogOutput,
+		Outputs:       DefaultOutputs,
 	}
 }
 
@@ -63,10 +64,6 @@ func (conf *Config) Check() error {
 	}
 	if conf.MaxRotateThreadNum < 1 {
 		conf.MaxRotateThreadNum = DefaultMaxRotateThreadNum
-	}
-
-	if conf.Outputs == "" {
-		conf.Outputs = DefaultOutputs
 	}
 	return nil
 }
