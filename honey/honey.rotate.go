@@ -23,7 +23,7 @@ func (h *HoneyPlugin) MakeRotateGroup() {
 		h.rotateGPool.Go(func() error {
 			h.RotateCallback(values)
 			return nil
-		})
+		}, nil)
 	}
 	h.rotate = rotate.NewRotate(callback, opts...)
 }
