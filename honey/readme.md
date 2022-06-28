@@ -54,7 +54,5 @@ plugins:
       #ReqTimeout = 5 # 请求超时, 单位秒
       #RetryCount = 2 # 请求失败重试次数, 0表示禁用
       #RetryIntervalMs = 2000 # 请求失败重试间隔毫秒数
-      #ProxyAddress = '' # 代理地址. 支持 http, https, socks5, socks5h. 示例: socks5://127.0.0.1:1080
-      #ProxyUser = '' # 代理用户名
-      #ProxyPasswd = '' # 代理用户密码
+      #ProxyAddress = '' # 代理地址. 支持 http, https, socks5, socks5h. 示例: socks5://127.0.0.1:1080 socks5://user:pwd@127.0.0.1:1080
 ```
