@@ -372,8 +372,8 @@ github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 h1:BHyfKlQyqbsFN5p3Ifn
 github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82/go.mod h1:lgjkn3NuSvDfVJdfcVVdX+jpBxNmX4rDAzaS45IcYoM=
 github.com/yudai/pp v2.0.1+incompatible/go.mod h1:PuxR/8QJ7cyCkFp/aUDS+JY727OFEZkTdatxwunjIkc=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
-github.com/zly-app/honey v0.2.2 h1:m10m7GlpMiDtny4PduX4ztM9bTVjXCpx4/z9E7d35F4=
-github.com/zly-app/honey v0.2.2/go.mod h1:0wMaO2gwJf27A8m0u699cffi1GZoxJx22EtUVpF/onM=
+github.com/zly-app/honey v0.2.3 h1:ZmUdU68mkb5d+OKucLMz5Qaiu6ZXOuSuF6rMSGNzy44=
+github.com/zly-app/honey v0.2.3/go.mod h1:0wMaO2gwJf27A8m0u699cffi1GZoxJx22EtUVpF/onM=
 github.com/zly-app/service/api v0.0.0-20220430055931-779fb32fc812 h1:3ULBQicxfHKLGVElBX4pLSRITFP12pt66N3CtQRcXw0=
 github.com/zly-app/service/api v0.0.0-20220430055931-779fb32fc812/go.mod h1:XL0rAOnzZR5WDQqLiiUeKdLUXmEM5VjJBEPXdcIx8yg=
 github.com/zly-app/zapp v1.1.9/go.mod h1:MszpwW6QqAhZZRAKo9UtzT4eaYXkyCMpGuRKBsHFYbw=
