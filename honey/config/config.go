@@ -12,7 +12,7 @@ const (
 	// 默认的实例名
 	DefaultInstance = "default"
 	// 停止原有的日志输出
-	DefaultStopLogOutput = false
+	DefaultStopLogOutput = true
 
 	// 默认批次大小
 	DefaultLogBatchSize = 10000
