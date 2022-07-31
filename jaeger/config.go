@@ -11,7 +11,7 @@ const (
 	defaultAddress = "127.0.0.1:6831"
 
 	// 默认采样器类型
-	defaultSamplerType = "const"
+	defaultSamplerType = "probabilistic"
 	// 默认采样器参数
 	defaultSamplerParam = 1
 
