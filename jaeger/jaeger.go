@@ -18,18 +18,11 @@ type JaegerPlugin struct {
 
 func NewJaegerPlugin(app core.IApp) core.IPlugin {
 	conf := newConfig()
-
-	// 解析配置
-	key := "plugins." + string(nowPluginType)
-	vi := app.GetConfig().GetViper()
-	if vi.IsSet(key) {
-		err := vi.UnmarshalKey(key, conf)
-		if err != nil {
-			app.Fatal("无法解析插件配置", zap.String("PluginType", string(nowPluginType)), zap.Error(err))
-		}
+	err := app.GetConfig().ParsePluginConfig(nowPluginType, conf, true)
+	if err == nil {
+		err = conf.Check()
 	}
-
-	if err := conf.Check(); err != nil {
+	if err != nil {
 		app.Fatal("jaeger配置错误", zap.Error(err))
 	}
 

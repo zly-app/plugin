@@ -23,6 +23,20 @@ func main() {
 
 ```
 
+# 添加配置文件 `configs/default.yml`. 更多配置说明参考[这里](./config.go)
+
+```yaml
+plugins:
+  jaeger:
+    Address: 127.0.0.1:6831 # jaeger地址
+    User: '' # 验证用户名
+    Password: '' # 验证密码
+    SamplerType: 'const' # 采样器类型, const, remote, probabilistic, ratelimiting
+    SamplerParam: 1 # 采样器参数
+    SpanBatchSize: 10000 # span信息批次发送大小, 存满后一次性发送到jaeger
+    AutoRotateTime: 3 # 自动旋转时间(秒), 如果没有达到累计输出批次大小, 在指定时间后也会立即输出
+```
+
 # 采样策略
 
 | SamplerType   | SamplerParam | 说明                                                                      |
