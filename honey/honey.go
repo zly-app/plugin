@@ -20,7 +20,7 @@ import (
 type HoneyPlugin struct {
 	app              core.IApp
 	conf             *config.Config
-	isInit           bool  // 是否完成初始化
+	startState       int32 // 启动状态 0未启动, 1已初始化, 2已启动
 	interceptorState int32 // 拦截状态 0未启动, 1已启动
 
 	rotate      rotate.IRotator // 旋转器
@@ -43,7 +43,7 @@ func (h *HoneyPlugin) Init() {
 	h.conf = conf
 
 	h.MakeRotateGroup()
-	h.isInit = true
+	atomic.StoreInt32(&h.startState, 1)
 }
 
 // 是否拦截
@@ -52,7 +52,7 @@ func (h *HoneyPlugin) isInterceptor() bool {
 }
 
 func (h *HoneyPlugin) Start() {
-	if !h.isInit {
+	if !atomic.CompareAndSwapInt32(&h.startState, 1, 2) {
 		return
 	}
 
@@ -65,10 +65,10 @@ func (h *HoneyPlugin) OnAppStart() {
 	atomic.StoreInt32(&h.interceptorState, 1)
 }
 
-func (h *HoneyPlugin) BeforeAfterClose() {
+func (h *HoneyPlugin) BeforeClose() {
 	atomic.StoreInt32(&h.interceptorState, 0)
 
-	if !h.isInit {
+	if atomic.LoadInt32(&h.startState) != 2 {
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *HoneyPlugin) BeforeAfterClose() {
 }
 
 func (h *HoneyPlugin) AfterClose() {
-	if !h.isInit {
+	if !atomic.CompareAndSwapInt32(&h.startState, 2, 1) {
 		return
 	}
 
@@ -95,6 +95,12 @@ func (h *HoneyPlugin) AfterClose() {
 func (h *HoneyPlugin) LogInterceptorFunc(ent *zapcore.Entry, fields []zapcore.Field) (cancel bool) {
 	log := log_data.MakeLogData(ent, fields)
 	h.rotate.Add(log)
+	if ent.Level == zap.PanicLevel && atomic.LoadInt32(&h.startState) != 2 {
+		h.rotate.Rotate()
+	}
+	if ent.Level == zap.FatalLevel {
+		h.rotate.Rotate()
+	}
 	return h.conf.StopLogOutput && h.isInterceptor()
 }
 
