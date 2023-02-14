@@ -1,4 +1,4 @@
-package jaegerotel
+package zipkinotel
 
 import (
 	"github.com/zly-app/zapp"
@@ -7,7 +7,7 @@ import (
 )
 
 // 默认插件类型
-const DefaultPluginType core.PluginType = "jaegerotel"
+const DefaultPluginType core.PluginType = "zipkinotel"
 
 // 当前服务类型
 var nowPluginType = DefaultPluginType
@@ -20,7 +20,7 @@ func SetPluginType(t core.PluginType) {
 // 启用插件
 func WithPlugin() zapp.Option {
 	plugin.RegisterCreatorFunc(nowPluginType, func(app core.IApp) core.IPlugin {
-		return NewJaegerPlugin(app)
+		return NewZipkinPlugin(app)
 	})
 	return zapp.WithPlugin(nowPluginType)
 }

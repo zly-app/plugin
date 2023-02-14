@@ -1,4 +1,4 @@
-package jaegerotel
+package zipkinotel
 
 import (
 	"context"
@@ -14,15 +14,15 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/zipkin"
 )
 
-type JaegerPlugin struct {
+type ZipkinPlugin struct {
 	app      core.IApp
 	provider *tracesdk.TracerProvider
 }
 
-func NewJaegerPlugin(app core.IApp) core.IPlugin {
+func NewZipkinPlugin(app core.IApp) core.IPlugin {
 	conf := newConfig()
 	err := app.GetConfig().ParsePluginConfig(nowPluginType, conf, true)
 	if err == nil {
@@ -33,18 +33,7 @@ func NewJaegerPlugin(app core.IApp) core.IPlugin {
 	}
 
 	var exp tracesdk.SpanExporter
-	if conf.Endpoint != "" {
-		exp, err = jaeger.New(jaeger.WithCollectorEndpoint(
-			jaeger.WithEndpoint(conf.Endpoint),
-			jaeger.WithUsername(conf.User),
-			jaeger.WithPassword(conf.Password),
-		))
-	} else {
-		exp, err = jaeger.New(jaeger.WithAgentEndpoint(
-			jaeger.WithAgentHost(conf.AgentHost),
-			jaeger.WithAgentPort(cast.ToString(conf.AgentPort)),
-		))
-	}
+	exp, err = zipkin.New(conf.CollectorURL)
 	if err != nil {
 		app.Fatal("无法创建jaeger跟踪程序", zap.Error(err))
 	}
@@ -72,17 +61,17 @@ func NewJaegerPlugin(app core.IApp) core.IPlugin {
 	)
 	otel.SetTracerProvider(tp)
 
-	return &JaegerPlugin{
+	return &ZipkinPlugin{
 		app:      app,
 		provider: tp,
 	}
 }
 
-func (j *JaegerPlugin) Inject(a ...interface{}) {}
+func (j *ZipkinPlugin) Inject(a ...interface{}) {}
 
-func (j *JaegerPlugin) Start() error { return nil }
+func (j *ZipkinPlugin) Start() error { return nil }
 
-func (j *JaegerPlugin) Close() error {
+func (j *ZipkinPlugin) Close() error {
 	if j.provider != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
