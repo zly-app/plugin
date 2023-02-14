@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cast"
 	"github.com/zly-app/zapp/core"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/zap"
 
@@ -70,7 +72,12 @@ func NewJaegerPlugin(app core.IApp) core.IPlugin {
 			tracesdk.TraceIDRatioBased(conf.SamplerFraction),
 		),
 	)
-	otel.SetTracerProvider(tp)
+	//otel.SetTracerProvider(tp)
+
+	t := tp.Tracer("")
+	bridgeTracer, wrapperTracerProvider := otelBridge.NewTracerPair(t)
+	otel.SetTracerProvider(wrapperTracerProvider)
+	opentracing.SetGlobalTracer(bridgeTracer)
 
 	return &JaegerPlugin{
 		app:      app,

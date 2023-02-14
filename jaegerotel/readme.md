@@ -27,6 +27,13 @@ func main() {
 }
 ```
 
+# 兼容 OpenTracing
+
+```go
+span := opentracing.StartSpan("test")
+span3.Finish()
+```
+
 # 添加配置文件 `configs/default.yml`. 更多配置说明参考[这里](./config.go)
 
 ```yaml
