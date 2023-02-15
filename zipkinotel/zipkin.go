@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/zap"
 
@@ -67,6 +68,8 @@ func NewZipkinPlugin(app core.IApp) core.IPlugin {
 	bridgeTracer, wrapperTracerProvider := otelBridge.NewTracerPair(t)
 	otel.SetTracerProvider(wrapperTracerProvider)
 	opentracing.SetGlobalTracer(bridgeTracer)
+
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return &ZipkinPlugin{
 		app:      app,
