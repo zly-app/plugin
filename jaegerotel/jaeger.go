@@ -67,6 +67,7 @@ func NewJaegerPlugin(app core.IApp) core.IPlugin {
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(app.Name()),
+			attribute.Key("app").String(app.Name()),
 			attribute.String("debug", cast.ToString(app.GetConfig().Config().Frame.Debug)),
 		)),
 		tracesdk.WithSampler(
