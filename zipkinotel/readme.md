@@ -39,7 +39,7 @@ span.Finish()
 ```yaml
 plugins:
   zipkinotel:
-    CollectorURL: '' # 收集器地址, 优先级高于 agent, 如 http://localhost:14268/api/traces
+    CollectorURL: '' # 收集器地址, 优先级高于 agent, 如 http://localhost:9411/api/v2/spans
 
     SamplerFraction: 1 # // 采样器采样率, <= 0.0 表示不采样, 1.0 表示总是采样
     SpanQueueSize: 4096 # 待上传的span队列大小. 超出的span会被丢弃
