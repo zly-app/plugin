@@ -22,7 +22,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
-	"go.opentelemetry.io/otel/exporters/zipkin"
+	"github.com/zly-app/plugin/zipkinotel/zipkin"
 )
 
 type ZipkinPlugin struct {
