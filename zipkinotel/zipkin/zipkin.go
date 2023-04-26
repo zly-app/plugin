@@ -158,7 +158,7 @@ func (e *Exporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpa
 		return e.errf("failed to read response body: %v", err)
 	}
 
-	if resp.StatusCode != http.StatusAccepted {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusNoContent {
 		return e.errf("failed to send spans to zipkin server with status %d", resp.StatusCode)
 	}
 
