@@ -1,0 +1,52 @@
+
+otlp on OpenTelemetry
+
+# 示例
+
+```go
+package main
+
+import (
+	"go.opentelemetry.io/otel"
+
+	"github.com/zly-app/plugin/otlp"
+	"github.com/zly-app/zapp"
+)
+
+func main() {
+	app := zapp.NewApp("test",
+		otlp.WithPlugin(),
+	)
+	defer app.Exit()
+
+	t := otel.Tracer("")
+	_, span := t.Start(app.BaseContext(), "testA")
+	app.Info("TraceID", span.SpanContext().TraceID())
+	app.Info("SpanID", span.SpanContext().SpanID())
+	span.End()
+}
+```
+
+# 兼容 OpenTracing
+
+```go
+span := opentracing.StartSpan("test")
+span.Finish()
+```
+
+# 添加配置文件 `configs/default.yml`. 更多配置说明参考[这里](./config.go)
+
+```yaml
+plugins:
+  otlp:
+    Addr: '' # 地址, 如 http://localhost:9411
+
+    SamplerFraction: 1 # // 采样器采样率, <= 0.0 表示不采样, 1.0 表示总是采样
+    SpanQueueSize: 4096 # 待上传的span队列大小. 超出的span会被丢弃
+    SpanBatchSize: 1024 # span信息批次发送大小, 存满后一次性发送到收集器
+    BlockOnSpanQueueFull: false # 如果span队列满了, 不会丢弃新的span, 而是阻塞直到有空间. 注意, 开启后如果发生阻塞会影响程序性能.
+    AutoRotateTime: 5 # 自动旋转时间(秒), 如果没有达到累计输出批次大小, 在指定时间后也会立即输出
+    ExportTimeout: 30 # 上传span超时时间(秒)
+
+    ProxyAddress: '' # 代理地址. 支持 http, https, socks5, socks5h. 示例: socks5://127.0.0.1:1080 socks5://user:pwd@127.0.0.1:1080
+```
