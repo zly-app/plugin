@@ -569,8 +569,6 @@ github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-github.com/zly-app/zapp v1.1.16 h1:nFa6EDQ0Z42Lnv/CPqLNFtiC8xxvcAVASgCErtTeYSI=
-github.com/zly-app/zapp v1.1.16/go.mod h1:0xOFkGfjg5ammcCOdPxqmdXc1lErw+6ABb/yozW9Djk=
 github.com/zly-app/zapp v1.3.5 h1:l3oh8RLhLgk0uf+y72Rbkc6wfaSUqjtDyxb1zmqMGeM=
 github.com/zly-app/zapp v1.3.5/go.mod h1:6Y2m3yM1jd5Htli6s+TRhxIw8AkqCo8vTZCGOjoXaJs=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
