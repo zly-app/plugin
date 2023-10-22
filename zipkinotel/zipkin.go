@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/spf13/cast"
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/logger"
 	"github.com/zly-app/zapp/pkg/utils"
@@ -75,13 +75,21 @@ func NewZipkinPlugin(app core.IApp) core.IPlugin {
 		batcherOpts = append(batcherOpts, tracesdk.WithBlocking())
 	}
 
+	labels := make([]string, 0, len(app.GetConfig().Config().Frame.Labels))
+	for k, v := range app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exp, batcherOpts...),
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(app.Name()),
 			attribute.Key("app").String(app.Name()),
-			attribute.String("debug", cast.ToString(app.GetConfig().Config().Frame.Debug)),
+			attribute.Bool("debug", app.GetConfig().Config().Frame.Debug),
+			attribute.String("env", app.GetConfig().Config().Frame.Env),
+			attribute.StringSlice("flags", app.GetConfig().Config().Frame.Flags),
+			attribute.StringSlice("labels", labels),
 		)),
 		tracesdk.WithSampler(
 			tracesdk.TraceIDRatioBased(conf.SamplerFraction),
