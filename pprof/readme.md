@@ -38,6 +38,9 @@ ubuntu执行`apt install graphviz`安装graphviz
 ```
 go tool pprof -http=:80 profile
 go tool pprof -http=:80 heap
+
+go tool pprof -http=:80 http://localhost:6060/debug/pprof/profile?seconds=30
+go tool pprof -http=:80 http://localhost:6060/debug/pprof/heap
 ```
 
 # 配置文件
@@ -48,5 +51,5 @@ go tool pprof -http=:80 heap
 plugins:
   pprof:
     Bind: :6060
-    Disable: true
+    Disable: false
 ```
