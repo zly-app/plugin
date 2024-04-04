@@ -32,7 +32,7 @@ type PProf struct {
 func (p *PProf) Inject(a ...interface{}) {}
 
 func (p *PProf) Start() error {
-	if p.conf.Disable {
+	if !p.conf.Enable {
 		return nil
 	}
 
