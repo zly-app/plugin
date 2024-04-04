@@ -1,7 +1,8 @@
 package pprof
 
 const (
-	defBind string = ":6060"
+	defBind    = ":6060"
+	defDisable = true
 )
 
 type Config struct {
@@ -12,7 +13,7 @@ type Config struct {
 func newConfig() *Config {
 	return &Config{
 		Bind:    defBind,
-		Disable: false,
+		Disable: defDisable,
 	}
 }
 
