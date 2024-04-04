@@ -51,5 +51,5 @@ go tool pprof -http=:80 http://localhost:6060/debug/pprof/heap
 plugins:
   pprof:
     Bind: :6060
-    Disable: false
+    Enable: true
 ```
