@@ -1,18 +1,19 @@
 package pprof
 
 const (
-	defBind string = ":6060"
+	defBind   = ":6060"
+	defEnable = false
 )
 
 type Config struct {
-	Bind    string // bind http端口
-	Disable bool   // 是否关闭pprof
+	Bind   string // bind http端口
+	Enable bool   // 是否开启pprof
 }
 
 func newConfig() *Config {
 	return &Config{
-		Bind:    defBind,
-		Disable: false,
+		Bind:   defBind,
+		Enable: defEnable,
 	}
 }
 
