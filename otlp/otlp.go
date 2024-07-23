@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,6 +69,11 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 		batcherOpts = append(batcherOpts, tracesdk.WithBlocking())
 	}
 
+	labels := make([]string, 0, len(app.GetConfig().Config().Frame.Labels))
+	for k, v := range app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exporter, batcherOpts...),
 		tracesdk.WithResource(resource.NewWithAttributes(
@@ -75,6 +81,9 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 			semconv.ServiceNameKey.String(app.Name()),
 			attribute.Key("app").String(app.Name()),
 			attribute.String("debug", cast.ToString(app.GetConfig().Config().Frame.Debug)),
+			attribute.String("env", app.GetConfig().Config().Frame.Env),
+			attribute.StringSlice("flags", app.GetConfig().Config().Frame.Flags),
+			attribute.StringSlice("labels", labels),
 		)),
 		tracesdk.WithSampler(
 			tracesdk.TraceIDRatioBased(conf.SamplerFraction),
