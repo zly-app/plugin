@@ -109,7 +109,7 @@ func (p *Client) startPullMode(conf *Config) {
 
 // 启动push模式
 func (p *Client) startPushMode(conf *Config) {
-	if conf.PushAddress == "" {
+	if p.pusher == nil {
 		return
 	}
 
