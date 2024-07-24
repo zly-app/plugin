@@ -43,16 +43,8 @@ type Client struct {
 
 func (p *Client) Inject(a ...interface{}) {}
 func (p *Client) Start() error {
-	coll := []prometheus.Collector{}
-	if p.conf.ProcessCollector {
-		coll = append(coll, collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	}
-	if p.conf.GoCollector {
-		coll = append(coll, collectors.NewGoCollector())
-	}
-
-	p.startPullMode(p.conf, coll...)
-	p.startPushMode(p.conf, coll...)
+	p.startPullMode(p.conf)
+	p.startPushMode(p.conf)
 	return nil
 }
 func (p *Client) Close() error { return nil }
@@ -68,18 +60,34 @@ func NewClient(app core.IApp, conf *Config) *Client {
 		histogramCollector: make(map[string]metrics.IHistogram),
 		summaryCollector:   make(map[string]metrics.ISummary),
 	}
+
+	if conf.PullBind != "" {
+		p.pullRegistry = prometheus.NewRegistry()
+	}
+	if conf.PushAddress != "" {
+		p.pusher = push.New(conf.PushAddress, p.app.Name())
+	}
+
+	coll := []prometheus.Collector{}
+	if p.conf.ProcessCollector {
+		coll = append(coll, collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
+	if p.conf.GoCollector {
+		coll = append(coll, collectors.NewGoCollector())
+	}
+	err := p.registryCollector(coll...)
+	if err != nil {
+		logger.Fatal("注册默认收集器失败", zap.Error(err))
+	}
 	return p
 }
 
 // 启动pull模式
-func (p *Client) startPullMode(conf *Config, coll ...prometheus.Collector) {
-	if conf.PullBind == "" {
+func (p *Client) startPullMode(conf *Config) {
+	if p.pullRegistry == nil {
 		return
 	}
 
-	// 创建注册器
-	p.pullRegistry = prometheus.NewRegistry()
-	p.pullRegistry.MustRegister(coll...)
 	p.app.Info("启用 metrics pull模式", zap.String("PullBind", conf.PullBind), zap.String("PullPath", conf.PullPath))
 
 	// 构建server
@@ -100,25 +108,24 @@ func (p *Client) startPullMode(conf *Config, coll ...prometheus.Collector) {
 }
 
 // 启动push模式
-func (p *Client) startPushMode(conf *Config, coll ...prometheus.Collector) {
+func (p *Client) startPushMode(conf *Config) {
 	if conf.PushAddress == "" {
 		return
 	}
 
 	// 创建推送器
-	pusher := push.New(conf.PushAddress, p.app.Name())
 	if conf.EnableOpenMetrics {
-		pusher.Format(expfmt.NewFormat(expfmt.TypeOpenMetrics))
+		p.pusher.Format(expfmt.NewFormat(expfmt.TypeOpenMetrics))
 	}
-	pusher.Grouping("app", p.app.Name())
-	pusher.Grouping("env", p.app.GetConfig().Config().Frame.Env)
-	pusher.Grouping("instance", conf.PushInstance)
+	p.pusher.Grouping("app", p.app.Name())
+	p.pusher.Grouping("env", p.app.GetConfig().Config().Frame.Env)
+	p.pusher.Grouping("instance", conf.PushInstance)
 
 	var defaultDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}
-	pusher.Client(&http.Client{Transport: &http.Transport{
+	p.pusher.Client(&http.Client{Transport: &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           defaultDialer.DialContext,
 		ForceAttemptHTTP2:     true,
@@ -128,11 +135,6 @@ func (p *Client) startPushMode(conf *Config, coll ...prometheus.Collector) {
 		ExpectContinueTimeout: 1 * time.Second,
 	}})
 
-	for _, c := range coll {
-		pusher.Collector(c)
-	}
-
-	p.pusher = pusher
 	p.app.Info("启用 metrics push 模式", zap.String("PushAddress", conf.PushAddress), zap.String("PushInstance", conf.PushInstance))
 
 	// 开始推送
@@ -152,7 +154,7 @@ func (p *Client) startPushMode(conf *Config, coll ...prometheus.Collector) {
 				p.push(conf, pusher)
 			}
 		}
-	}(done, conf, pusher)
+	}(done, conf, p.pusher)
 }
 
 // 推送
@@ -165,14 +167,20 @@ func (p *Client) push(conf *Config, pusher *push.Pusher) {
 }
 
 // 注册收集器
-func (p *Client) registryCollector(collector prometheus.Collector) error {
+func (p *Client) registryCollector(collector ...prometheus.Collector) error {
 	if p.pullRegistry != nil {
-		if err := p.pullRegistry.Register(collector); err != nil {
-			return err
+		for _, coll := range collector {
+			err := p.pullRegistry.Register(coll)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	if p.pusher != nil {
-		p.pusher.Collector(collector)
+		for _, coll := range collector {
+			p.pusher.Collector(coll)
+		}
 	}
 	return nil
 }
