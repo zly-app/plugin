@@ -21,12 +21,12 @@ func NewZipKinPlugin(app core.IApp) core.IPlugin {
 	var conf Config
 
 	// 解析配置
-	key := "plugins." + string(nowPluginType)
+	key := "plugins." + string(DefaultPluginType)
 	vi := app.GetConfig().GetViper()
 	if vi.IsSet(key) {
 		err := vi.UnmarshalKey(key, &conf)
 		if err != nil {
-			app.Fatal("无法解析插件配置", zap.String("PluginType", string(nowPluginType)), zap.Error(err))
+			app.Fatal("无法解析插件配置", zap.String("PluginType", string(DefaultPluginType)), zap.Error(err))
 		}
 	}
 

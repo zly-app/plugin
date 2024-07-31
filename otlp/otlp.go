@@ -27,7 +27,7 @@ type OtlpPlugin struct {
 
 func NewOtlpPlugin(app core.IApp) core.IPlugin {
 	conf := newConfig()
-	err := app.GetConfig().ParsePluginConfig(nowPluginType, conf, true)
+	err := app.GetConfig().ParsePluginConfig(DefaultPluginType, conf, true)
 	if err == nil {
 		err = conf.Check()
 	}
