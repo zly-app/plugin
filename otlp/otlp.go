@@ -37,7 +37,7 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 
 	otlpTraceOpts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(conf.Addr),
-		otlptracehttp.WithCompression(otlptracehttp.GzipCompression),
+		otlptracehttp.WithCompression(otlptracehttp.NoCompression),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         true,
 			InitialInterval: 5 * time.Second,
@@ -82,8 +82,8 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 			attribute.Key("app").String(app.Name()),
 			attribute.String("debug", cast.ToString(app.GetConfig().Config().Frame.Debug)),
 			attribute.String("env", app.GetConfig().Config().Frame.Env),
-			attribute.StringSlice("flags", app.GetConfig().Config().Frame.Flags),
-			attribute.StringSlice("labels", labels),
+			attribute.String("flags", strings.Join(app.GetConfig().Config().Frame.Flags, ",")),
+			attribute.String("labels", strings.Join(labels, ",")),
 		)),
 		tracesdk.WithSampler(
 			tracesdk.TraceIDRatioBased(conf.SamplerFraction),
