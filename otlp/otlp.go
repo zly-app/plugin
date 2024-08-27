@@ -21,8 +21,10 @@ import (
 )
 
 type OtlpPlugin struct {
-	app      core.IApp
-	provider *tracesdk.TracerProvider
+	app  core.IApp
+	conf *Config
+
+	traceProvider *tracesdk.TracerProvider
 }
 
 func NewOtlpPlugin(app core.IApp) core.IPlugin {
@@ -35,9 +37,24 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 		app.Fatal("otlp配置错误", zap.Error(err))
 	}
 
+	ret := &OtlpPlugin{
+		app:  app,
+		conf: conf,
+	}
+
+	ret.Trace()
+	return ret
+}
+
+func (o *OtlpPlugin) Trace() {
+	compress := otlptracehttp.NoCompression
+	if o.conf.Trace.Gzip {
+		compress = otlptracehttp.GzipCompression
+	}
+
 	otlpTraceOpts := []otlptracehttp.Option{
-		otlptracehttp.WithEndpoint(conf.Addr),
-		otlptracehttp.WithCompression(otlptracehttp.NoCompression),
+		otlptracehttp.WithEndpoint(o.conf.Addr),
+		otlptracehttp.WithCompression(compress),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         true,
 			InitialInterval: 5 * time.Second,
@@ -46,31 +63,31 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 		}),
 	}
 	switch {
-	case strings.HasPrefix(conf.Addr, "http://"):
+	case strings.HasPrefix(o.conf.Addr, "http://"):
 		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithInsecure())
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(conf.Addr, "http://")))
-	case strings.HasPrefix(conf.Addr, "https://"):
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(conf.Addr, "https://")))
+		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(o.conf.Addr, "http://")))
+	case strings.HasPrefix(o.conf.Addr, "https://"):
+		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(o.conf.Addr, "https://")))
 	default:
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(conf.Addr))
+		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(o.conf.Addr))
 	}
 	exporter, err := otlptracehttp.New(context.Background(), otlpTraceOpts...)
 	if err != nil {
-		app.Fatal("无法创建otel跟踪程序", zap.Error(err))
+		o.app.Fatal("无法创建otel跟踪程序", zap.Error(err))
 	}
 
 	batcherOpts := []tracesdk.BatchSpanProcessorOption{
-		tracesdk.WithMaxQueueSize(conf.SpanQueueSize),
-		tracesdk.WithMaxExportBatchSize(conf.SpanBatchSize),
-		tracesdk.WithBatchTimeout(time.Duration(conf.AutoRotateTime) * time.Second),
-		tracesdk.WithExportTimeout(time.Duration(conf.ExportTimeout) * time.Second),
+		tracesdk.WithMaxQueueSize(o.conf.Trace.SpanQueueSize),
+		tracesdk.WithMaxExportBatchSize(o.conf.Trace.SpanBatchSize),
+		tracesdk.WithBatchTimeout(time.Duration(o.conf.Trace.AutoRotateTime) * time.Second),
+		tracesdk.WithExportTimeout(time.Duration(o.conf.Trace.ExportTimeout) * time.Second),
 	}
-	if conf.BlockOnSpanQueueFull {
+	if o.conf.Trace.BlockOnSpanQueueFull {
 		batcherOpts = append(batcherOpts, tracesdk.WithBlocking())
 	}
 
-	labels := make([]string, 0, len(app.GetConfig().Config().Frame.Labels))
-	for k, v := range app.GetConfig().Config().Frame.Labels {
+	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
+	for k, v := range o.app.GetConfig().Config().Frame.Labels {
 		labels = append(labels, k+"="+v)
 	}
 	sort.Strings(labels)
@@ -78,15 +95,15 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 		tracesdk.WithBatcher(exporter, batcherOpts...),
 		tracesdk.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(app.Name()),
-			attribute.Key("app").String(app.Name()),
-			attribute.String("debug", cast.ToString(app.GetConfig().Config().Frame.Debug)),
-			attribute.String("env", app.GetConfig().Config().Frame.Env),
-			attribute.String("flags", strings.Join(app.GetConfig().Config().Frame.Flags, ",")),
+			semconv.ServiceNameKey.String(o.app.Name()),
+			attribute.Key("app").String(o.app.Name()),
+			attribute.String("debug", cast.ToString(o.app.GetConfig().Config().Frame.Debug)),
+			attribute.String("env", o.app.GetConfig().Config().Frame.Env),
+			attribute.String("flags", strings.Join(o.app.GetConfig().Config().Frame.Flags, ",")),
 			attribute.String("labels", strings.Join(labels, ",")),
 		)),
 		tracesdk.WithSampler(
-			tracesdk.TraceIDRatioBased(conf.SamplerFraction),
+			tracesdk.TraceIDRatioBased(o.conf.Trace.SamplerFraction),
 		),
 	)
 
@@ -96,22 +113,18 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 	opentracing.SetGlobalTracer(bridgeTracer)
 
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-
-	return &OtlpPlugin{
-		app:      app,
-		provider: tp,
-	}
+	o.traceProvider = tp
 }
 
-func (j *OtlpPlugin) Inject(a ...interface{}) {}
+func (o *OtlpPlugin) Inject(a ...interface{}) {}
 
-func (j *OtlpPlugin) Start() error { return nil }
+func (o *OtlpPlugin) Start() error { return nil }
 
-func (j *OtlpPlugin) Close() error {
-	if j.provider != nil {
+func (o *OtlpPlugin) Close() error {
+	if o.traceProvider != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
-		return j.provider.Shutdown(ctx)
+		return o.traceProvider.Shutdown(ctx)
 	}
 	return nil
 }
