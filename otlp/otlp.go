@@ -12,8 +12,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
+	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -24,7 +26,8 @@ type OtlpPlugin struct {
 	app  core.IApp
 	conf *Config
 
-	traceProvider *tracesdk.TracerProvider
+	traceProvider  *tracesdk.TracerProvider
+	metricProvider *metricsdk.MeterProvider
 }
 
 func NewOtlpPlugin(app core.IApp) core.IPlugin {
@@ -42,7 +45,12 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 		conf: conf,
 	}
 
-	ret.Trace()
+	if conf.Trace.Enabled {
+		ret.Trace()
+	}
+	if conf.Metric.Enabled {
+		ret.Metrics()
+	}
 	return ret
 }
 
@@ -53,27 +61,18 @@ func (o *OtlpPlugin) Trace() {
 	}
 
 	otlpTraceOpts := []otlptracehttp.Option{
-		otlptracehttp.WithEndpoint(o.conf.Addr),
+		otlptracehttp.WithEndpointURL(o.conf.Trace.Addr),
 		otlptracehttp.WithCompression(compress),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
-			Enabled:         true,
-			InitialInterval: 5 * time.Second,
-			MaxInterval:     30 * time.Second,
-			MaxElapsedTime:  time.Minute,
+			Enabled:         o.conf.Trace.Retry.Enabled,
+			InitialInterval: time.Duration(o.conf.Trace.Retry.InitialIntervalSec) * time.Second,
+			MaxInterval:     time.Duration(o.conf.Trace.Retry.MaxIntervalSec) * time.Second,
+			MaxElapsedTime:  time.Duration(o.conf.Trace.Retry.MaxElapsedTimeSec) * time.Second,
 		}),
-	}
-	switch {
-	case strings.HasPrefix(o.conf.Addr, "http://"):
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithInsecure())
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(o.conf.Addr, "http://")))
-	case strings.HasPrefix(o.conf.Addr, "https://"):
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(strings.TrimPrefix(o.conf.Addr, "https://")))
-	default:
-		otlpTraceOpts = append(otlpTraceOpts, otlptracehttp.WithEndpoint(o.conf.Addr))
 	}
 	exporter, err := otlptracehttp.New(context.Background(), otlpTraceOpts...)
 	if err != nil {
-		o.app.Fatal("无法创建otel跟踪程序", zap.Error(err))
+		o.app.Fatal("无法创建 otlp trace 导出器", zap.Error(err))
 	}
 
 	batcherOpts := []tracesdk.BatchSpanProcessorOption{
@@ -116,6 +115,39 @@ func (o *OtlpPlugin) Trace() {
 	o.traceProvider = tp
 }
 
+func (o *OtlpPlugin) Metrics() {
+	compress := otlpmetrichttp.NoCompression
+	if o.conf.Metric.Gzip {
+		compress = otlpmetrichttp.GzipCompression
+	}
+
+	otlpMetricOpts := []otlpmetrichttp.Option{
+		otlpmetrichttp.WithEndpointURL(o.conf.Metric.Addr),
+		otlpmetrichttp.WithCompression(compress),
+		otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{
+			Enabled:         o.conf.Metric.Retry.Enabled,
+			InitialInterval: time.Duration(o.conf.Metric.Retry.InitialIntervalSec) * time.Second,
+			MaxInterval:     time.Duration(o.conf.Metric.Retry.MaxIntervalSec) * time.Second,
+			MaxElapsedTime:  time.Duration(o.conf.Metric.Retry.MaxElapsedTimeSec) * time.Second,
+		}),
+	}
+
+	exporter, err := otlpmetrichttp.New(context.Background(), otlpMetricOpts...)
+	if err != nil {
+		o.app.Fatal("无法创建 otlp metric 导出器", zap.Error(err))
+	}
+
+	mp := metricsdk.NewMeterProvider(
+		metricsdk.WithReader(metricsdk.NewPeriodicReader(exporter,
+			metricsdk.WithInterval(time.Duration(o.conf.Metric.AutoRotateTime)*time.Second),
+			metricsdk.WithTimeout(time.Duration(o.conf.Metric.ExportTimeout)*time.Second),
+		)),
+	)
+
+	otel.SetMeterProvider(mp)
+	o.metricProvider = mp
+}
+
 func (o *OtlpPlugin) Inject(a ...interface{}) {}
 
 func (o *OtlpPlugin) Start() error { return nil }
@@ -124,7 +156,12 @@ func (o *OtlpPlugin) Close() error {
 	if o.traceProvider != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
-		return o.traceProvider.Shutdown(ctx)
+		_ = o.traceProvider.Shutdown(ctx)
+	}
+	if o.metricProvider != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
+		_ = o.metricProvider.Shutdown(ctx)
 	}
 	return nil
 }
