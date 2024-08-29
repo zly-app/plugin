@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/zly-app/zapp/handler"
 	"github.com/zly-app/zapp/logger"
 )
+
+const RemoteWriteUri = "/api/v1/write"
 
 type Client struct {
 	app  core.IApp
@@ -39,12 +42,14 @@ type Client struct {
 
 	pullRegistry *prometheus.Registry // pull模式注册器
 	pusher       *push.Pusher         // push模式推送器
+	remoteWrite  *RemoteWrite
 }
 
 func (p *Client) Inject(a ...interface{}) {}
 func (p *Client) Start() error {
 	p.startPullMode(p.conf)
 	p.startPushMode(p.conf)
+	p.startRemoteWrite(p.conf)
 	return nil
 }
 func (p *Client) Close() error { return nil }
@@ -66,6 +71,9 @@ func NewClient(app core.IApp, conf *Config) *Client {
 	}
 	if conf.PushAddress != "" {
 		p.pusher = push.New(conf.PushAddress, p.app.Name())
+	}
+	if conf.WriteAddress != "" {
+		p.remoteWrite = NewRemoteWrite(conf.WriteAddress)
 	}
 
 	coll := []prometheus.Collector{}
@@ -113,7 +121,6 @@ func (p *Client) startPushMode(conf *Config) {
 		return
 	}
 
-	// 创建推送器
 	if conf.EnableOpenMetrics {
 		p.pusher.Format(expfmt.NewFormat(expfmt.TypeOpenMetrics))
 	}
@@ -157,11 +164,83 @@ func (p *Client) startPushMode(conf *Config) {
 	}(done, conf, p.pusher)
 }
 
+// 启动RemoteWrite模式
+func (p *Client) startRemoteWrite(conf *Config) {
+	if p.remoteWrite == nil {
+		return
+	}
+
+	if conf.EnableOpenMetrics {
+		p.remoteWrite.FormatType(expfmt.TypeOpenMetrics)
+	}
+
+	labels := make([]string, 0, len(p.app.GetConfig().Config().Frame.Labels))
+	for k, v := range p.app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
+	p.remoteWrite.ExtraLabel("app", p.app.Name())
+	p.remoteWrite.ExtraLabel("env", p.app.GetConfig().Config().Frame.Env)
+	p.remoteWrite.ExtraLabel("instance", conf.WriteInstance)
+
+	var defaultDialer = &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	p.remoteWrite.Client(&http.Client{Transport: &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           defaultDialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}})
+
+	p.app.Info("启用 metrics RemoteWrite 模式", zap.String("Url", conf.WriteAddress))
+
+	// 开始写入
+	done, cancel := context.WithCancel(context.Background())
+	handler.AddHandler(handler.AfterExitHandler, func(app core.IApp, handlerType handler.HandlerType) {
+		cancel()
+	})
+	go func(ctx context.Context, conf *Config, write *RemoteWrite) {
+		for {
+			t := time.NewTimer(time.Duration(conf.WriteTimeInterval) * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				p.write(conf, write) // 最后一次推送
+				return
+			case <-t.C:
+				p.write(conf, write)
+			}
+		}
+	}(done, conf, p.remoteWrite)
+}
+
 // 推送
 func (p *Client) push(conf *Config, pusher *push.Pusher) {
 	zretry.DoRetry(int(conf.PushRetry+1), time.Duration(conf.PushRetryInterval)*time.Millisecond, pusher.Push,
 		func(nowAttemptCount, remainCount int, err error) {
-			p.app.Error("metrics 状态推送失败", zap.Error(err))
+			p.app.Error("metrics push 失败", zap.Error(err))
+		},
+	)
+}
+
+// remote write
+func (p *Client) write(conf *Config, write *RemoteWrite) {
+	err := write.Collect()
+	if err != nil {
+		p.app.Error("metrics RemoteWrite Collect 失败", zap.Error(err))
+		return
+	}
+	zretry.DoRetry(int(conf.WriteRetry+1), time.Duration(conf.WriteRetryInterval)*time.Millisecond,
+		func() error {
+			return write.PushLocal()
+		},
+		func(nowAttemptCount, remainCount int, err error) {
+			p.app.Error("metrics RemoteWrite 失败", zap.Error(err))
 		},
 	)
 }
@@ -180,6 +259,11 @@ func (p *Client) registryCollector(collector ...prometheus.Collector) error {
 	if p.pusher != nil {
 		for _, coll := range collector {
 			p.pusher.Collector(coll)
+		}
+	}
+	if p.remoteWrite != nil {
+		for _, coll := range collector {
+			p.remoteWrite.Collector(coll)
 		}
 	}
 	return nil
