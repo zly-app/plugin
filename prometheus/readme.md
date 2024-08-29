@@ -27,7 +27,7 @@ plugin:
       PushRetry: 2 # push模式推送重试次数
       PushRetryInterval: 1000 # push模式推送重试时间间隔, 单位毫秒
 
-      WriteAddress: "" # RemoteWrite 地址, 如果为空则不启用, 如: 'http://127.0.0.1:9090'
+      WriteAddress: "" # RemoteWrite 地址, 如果为空则不启用, 如: 'http://127.0.0.1:9090/api/v1/write'
       WriteInstance: "" # 实例, 一般为ip或主机名
       WriteTimeInterval: 10000 # RemoteWrite 模式推送时间间隔, 单位毫秒
       WriteRetry: 2 # RemoteWrite 模式推送重试次数

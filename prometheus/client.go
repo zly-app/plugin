@@ -22,8 +22,6 @@ import (
 	"github.com/zly-app/zapp/logger"
 )
 
-const RemoteWriteUri = "/api/v1/write"
-
 type Client struct {
 	app  core.IApp
 	conf *Config

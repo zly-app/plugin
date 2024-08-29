@@ -49,7 +49,7 @@ func NewRemoteWrite(url string) *RemoteWrite {
 	url = strings.TrimSuffix(url, "/")
 
 	return &RemoteWrite{
-		url:        url + RemoteWriteUri,
+		url:        url,
 		gatherers:  prometheus.Gatherers{reg},
 		registerer: reg,
 		client:     &http.Client{},
