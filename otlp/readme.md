@@ -19,7 +19,7 @@ func main() {
 	)
 	defer app.Exit()
 
-	t := otel.Tracer("")
+	t := otlp.Tracer()
 	_, span := t.Start(app.BaseContext(), "testA")
 	app.Info("TraceID", span.SpanContext().TraceID())
 	app.Info("SpanID", span.SpanContext().SpanID())

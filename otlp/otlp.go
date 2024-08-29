@@ -4,23 +4,29 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cast"
+	"github.com/zly-app/zapp/component/metrics"
 	"github.com/zly-app/zapp/core"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+const Name = "github.com/zly-app/plugin/otlp"
 
 type OtlpPlugin struct {
 	app  core.IApp
@@ -28,14 +34,23 @@ type OtlpPlugin struct {
 
 	traceProvider  *tracesdk.TracerProvider
 	metricProvider *metricsdk.MeterProvider
+	metricMeter    metric.Meter
+
+	counterCollector       map[string]metrics.ICounter // 计数器
+	counterCollectorLocker sync.RWMutex
+
+	gaugeCollector       map[string]metrics.IGauge // 计量器
+	gaugeCollectorLocker sync.RWMutex
+
+	histogramCollector       map[string]metrics.IHistogram // 直方图
+	histogramCollectorLocker sync.RWMutex
+
+	summaryCollector       map[string]metrics.ISummary // 汇总
+	summaryCollectorLocker sync.RWMutex
 }
 
-func NewOtlpPlugin(app core.IApp) core.IPlugin {
-	conf := newConfig()
-	err := app.GetConfig().ParsePluginConfig(DefaultPluginType, conf, true)
-	if err == nil {
-		err = conf.Check()
-	}
+func NewOtlpPlugin(app core.IApp, conf *Config) *OtlpPlugin {
+	err := conf.Check()
 	if err != nil {
 		app.Fatal("otlp配置错误", zap.Error(err))
 	}
@@ -43,6 +58,11 @@ func NewOtlpPlugin(app core.IApp) core.IPlugin {
 	ret := &OtlpPlugin{
 		app:  app,
 		conf: conf,
+
+		counterCollector:   make(map[string]metrics.ICounter),
+		gaugeCollector:     make(map[string]metrics.IGauge),
+		histogramCollector: make(map[string]metrics.IHistogram),
+		summaryCollector:   make(map[string]metrics.ISummary),
 	}
 
 	if conf.Trace.Enabled {
@@ -106,7 +126,7 @@ func (o *OtlpPlugin) Trace() {
 		),
 	)
 
-	t := tp.Tracer("")
+	t := tp.Tracer(Name)
 	bridgeTracer, wrapperTracerProvider := otelBridge.NewTracerPair(t)
 	otel.SetTracerProvider(wrapperTracerProvider)
 	opentracing.SetGlobalTracer(bridgeTracer)
@@ -146,6 +166,20 @@ func (o *OtlpPlugin) Metrics() {
 
 	otel.SetMeterProvider(mp)
 	o.metricProvider = mp
+
+	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
+	for k, v := range o.app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
+	o.metricMeter = mp.Meter(Name, metric.WithInstrumentationAttributes(
+		semconv.ServiceNameKey.String(o.app.Name()),
+		attribute.Key("app").String(o.app.Name()),
+		attribute.Bool("debug", o.app.GetConfig().Config().Frame.Debug),
+		attribute.String("env", o.app.GetConfig().Config().Frame.Env),
+		attribute.StringSlice("flags", o.app.GetConfig().Config().Frame.Flags),
+		attribute.StringSlice("labels", labels),
+	))
 }
 
 func (o *OtlpPlugin) Inject(a ...interface{}) {}
@@ -164,4 +198,11 @@ func (o *OtlpPlugin) Close() error {
 		_ = o.metricProvider.Shutdown(ctx)
 	}
 	return nil
+}
+
+func Trace() trace.Tracer {
+	return otel.Tracer(Name)
+}
+func Meter() metric.Meter {
+	return otel.Meter(Name)
 }
