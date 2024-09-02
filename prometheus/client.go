@@ -297,7 +297,8 @@ func (p *Client) Counter(name string) metrics.ICounter {
 
 	counter, ok := p.counterCollector[name]
 	if !ok {
-		p.app.Fatal("metrics Counter 计数器不存在", zap.String("name", name))
+		p.app.Warn("metrics Counter 计数器不存在", zap.String("name", name))
+		return metrics.DefNoopClient.Counter(name)
 	}
 	return counter
 }
@@ -332,7 +333,8 @@ func (p *Client) Gauge(name string) metrics.IGauge {
 
 	gauge, ok := p.gaugeCollector[name]
 	if !ok {
-		p.app.Fatal("metrics Gauge 计量器不存在", zap.String("name", name))
+		p.app.Warn("metrics Gauge 计量器不存在", zap.String("name", name))
+		return metrics.DefNoopClient.Gauge(name)
 	}
 	return gauge
 }
@@ -368,7 +370,8 @@ func (p *Client) Histogram(name string) metrics.IHistogram {
 
 	histogram, ok := p.histogramCollector[name]
 	if !ok {
-		p.app.Fatal("metrics Histogram 直方图不存在", zap.String("name", name))
+		p.app.Warn("metrics Histogram 直方图不存在", zap.String("name", name))
+		return metrics.DefNoopClient.Histogram(name)
 	}
 	return histogram
 }
@@ -403,7 +406,8 @@ func (p *Client) Summary(name string) metrics.ISummary {
 
 	summary, ok := p.summaryCollector[name]
 	if !ok {
-		p.app.Fatal("metrics Summary 汇总不存在", zap.String("name", name))
+		p.app.Warn("metrics Summary 汇总不存在", zap.String("name", name))
+		return metrics.DefNoopClient.Summary(name)
 	}
 	return summary
 }
