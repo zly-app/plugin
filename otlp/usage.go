@@ -5,6 +5,7 @@ import (
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp/pkg/zlog"
 	"github.com/zly-app/zapp/plugin"
 )
 
@@ -29,7 +30,11 @@ func init() {
 
 // 启用插件
 func WithPlugin() zapp.Option {
+	logConf := zlog.NewHookConfig()
+	h := newLogPlugin(logConf.SetCore)
+	logConf.AddStartHookCallbacks(h.Init) // 通过日志启动hook的能力提供初始化
 	return zapp.WithMultiOptions(
 		zapp.WithPlugin(DefaultPluginType),
+		zapp.WithLoggerOptions(zlog.WithHookByConfig(logConf)),
 	)
 }
