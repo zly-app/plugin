@@ -68,7 +68,7 @@ func newConfig() *Config {
 		Trace: TraceConfig{
 			Enabled:              defTraceEnabled,
 			Addr:                 defTraceAddr,
-			URLPath:              defMetricURLPath,
+			URLPath:              defTraceURLPath,
 			Gzip:                 defTraceGzip,
 			SamplerFraction:      defTraceSamplerFraction,
 			SpanQueueSize:        defTraceSpanQueueSize,
