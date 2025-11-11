@@ -21,10 +21,6 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-replace (
-	github.com/zly-app/zapp => ../../zapp
-)
-
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
