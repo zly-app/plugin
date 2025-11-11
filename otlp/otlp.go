@@ -82,6 +82,7 @@ func (o *OtlpPlugin) Trace() {
 
 	otlpTraceOpts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpointURL(o.conf.Trace.Addr),
+		otlptracehttp.WithURLPath(o.conf.Trace.URLPath),
 		otlptracehttp.WithCompression(compress),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         o.conf.Trace.Retry.Enabled,
@@ -143,6 +144,7 @@ func (o *OtlpPlugin) Metrics() {
 
 	otlpMetricOpts := []otlpmetrichttp.Option{
 		otlpmetrichttp.WithEndpointURL(o.conf.Metric.Addr),
+		otlpmetrichttp.WithURLPath(o.conf.Metric.URLPath),
 		otlpmetrichttp.WithCompression(compress),
 		otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{
 			Enabled:         o.conf.Metric.Retry.Enabled,
