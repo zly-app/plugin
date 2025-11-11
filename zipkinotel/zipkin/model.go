@@ -19,7 +19,7 @@ import (
 	semconv120 "go.opentelemetry.io/otel/semconv/v1.20.0"
 	semconv121 "go.opentelemetry.io/otel/semconv/v1.21.0"
 	semconv125 "go.opentelemetry.io/otel/semconv/v1.25.0"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -143,26 +143,10 @@ func toZipkinAnnotations(events []tracesdk.Event) []zkmodel.Annotation {
 			continue
 		}
 
-		if len(event.Attributes) > 1 {
-			value := attributesToJSONMapString(event.Name, event.Attributes)
-			annotations = append(annotations, zkmodel.Annotation{
-				Timestamp: event.Time,
-				Value:     value,
-			})
-		}
-
-		a := event.Attributes[0]
-		m := make(map[string]interface{}, 1)
-		if string(a.Key) == "data" {
-			m[event.Name] = a.Value.AsInterface()
-		} else {
-			m["_event"] = event
-			m[(string)(a.Key)] = a.Value.AsInterface()
-		}
-		jsonBytes, _ := sonic.Marshal(m)
+		value := attributesToJSONMapString(event.Name, event.Attributes)
 		annotations = append(annotations, zkmodel.Annotation{
 			Timestamp: event.Time,
-			Value:     string(jsonBytes),
+			Value:     value,
 		})
 		continue
 
@@ -179,9 +163,10 @@ func attributesToJSONMapString(event string, attributes []attribute.KeyValue) st
 		return jsonBytes
 	}
 
-	m := make(map[string]interface{}, len(attributes))
+	m := make(map[string]interface{}, len(attributes)+1)
+	m["_event"] = event
 	for _, a := range attributes {
-		m[(string)(a.Key)] = a.Value.AsInterface()
+		m[string(a.Key)] = a.Value.AsInterface()
 	}
 	// if an error happens, the result will be an empty string
 	jsonBytes, _ := sonic.MarshalString(m)
@@ -194,18 +179,18 @@ func attributeToStringPair(kv attribute.KeyValue) (string, string) {
 	// For slice attributes, serialize as JSON list string.
 	case attribute.BOOLSLICE:
 		data, _ := sonic.Marshal(kv.Value.AsBoolSlice())
-		return (string)(kv.Key), (string)(data)
+		return string(kv.Key), string(data)
 	case attribute.INT64SLICE:
 		data, _ := sonic.Marshal(kv.Value.AsInt64Slice())
-		return (string)(kv.Key), (string)(data)
+		return string(kv.Key), string(data)
 	case attribute.FLOAT64SLICE:
 		data, _ := sonic.Marshal(kv.Value.AsFloat64Slice())
-		return (string)(kv.Key), (string)(data)
+		return string(kv.Key), string(data)
 	case attribute.STRINGSLICE:
 		data, _ := sonic.Marshal(kv.Value.AsStringSlice())
-		return (string)(kv.Key), (string)(data)
+		return string(kv.Key), string(data)
 	default:
-		return (string)(kv.Key), kv.Value.Emit()
+		return string(kv.Key), kv.Value.Emit()
 	}
 }
 
