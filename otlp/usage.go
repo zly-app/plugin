@@ -1,10 +1,11 @@
 package otlp
 
 import (
+	"go.uber.org/zap"
+
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/plugin"
-	"go.uber.org/zap"
 )
 
 // 默认插件类型
@@ -20,7 +21,7 @@ func init() {
 
 		client := NewOtlpPlugin(app, conf)
 		if conf.Metric.Enabled {
-			//metrics.SetClient(client)
+			// metrics.SetClient(client)
 		}
 		return client
 	})
@@ -28,5 +29,7 @@ func init() {
 
 // 启用插件
 func WithPlugin() zapp.Option {
-	return zapp.WithPlugin(DefaultPluginType)
+	return zapp.WithMultiOptions(
+		zapp.WithPlugin(DefaultPluginType),
+	)
 }

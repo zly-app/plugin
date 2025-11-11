@@ -9,21 +9,26 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cast"
-	"github.com/zly-app/zapp/component/metrics"
-	"github.com/zly-app/zapp/core"
+	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
+	logsdk "go.opentelemetry.io/otel/sdk/log"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+
+	"github.com/zly-app/zapp/component/metrics"
+	"github.com/zly-app/zapp/core"
 )
 
 const Name = "github.com/zly-app/plugin/otlp"
@@ -31,6 +36,8 @@ const Name = "github.com/zly-app/plugin/otlp"
 type OtlpPlugin struct {
 	app  core.IApp
 	conf *Config
+
+	logProvider *logsdk.LoggerProvider
 
 	traceProvider  *tracesdk.TracerProvider
 	metricProvider *metricsdk.MeterProvider
@@ -65,6 +72,9 @@ func NewOtlpPlugin(app core.IApp, conf *Config) *OtlpPlugin {
 		summaryCollector:   make(map[string]metrics.ISummary),
 	}
 
+	if conf.Log.Enabled {
+		ret.Log()
+	}
 	if conf.Trace.Enabled {
 		ret.Trace()
 	}
@@ -72,6 +82,57 @@ func NewOtlpPlugin(app core.IApp, conf *Config) *OtlpPlugin {
 		ret.Metrics()
 	}
 	return ret
+}
+
+func (o *OtlpPlugin) Log() {
+	compress := otlploghttp.NoCompression
+	if o.conf.Trace.Gzip {
+		compress = otlploghttp.GzipCompression
+	}
+
+	otlpLogOpts := []otlploghttp.Option{
+		otlploghttp.WithEndpoint(o.conf.Log.Addr),
+		otlploghttp.WithURLPath(o.conf.Log.URLPath),
+		otlploghttp.WithCompression(compress),
+		otlploghttp.WithRetry(otlploghttp.RetryConfig{
+			Enabled:         o.conf.Log.Retry.Enabled,
+			InitialInterval: time.Duration(o.conf.Log.Retry.InitialIntervalSec) * time.Second,
+			MaxInterval:     time.Duration(o.conf.Log.Retry.MaxIntervalSec) * time.Second,
+			MaxElapsedTime:  time.Duration(o.conf.Log.Retry.MaxElapsedTimeSec) * time.Second,
+		}),
+	}
+	exporter, err := otlploghttp.New(context.Background(), otlpLogOpts...)
+	if err != nil {
+		o.app.Fatal("无法创建 otlp log 导出器", zap.Error(err))
+	}
+
+	batcherOpts := []logsdk.BatchProcessorOption{
+		logsdk.WithMaxQueueSize(o.conf.Log.SpanQueueSize),
+		logsdk.WithExportMaxBatchSize(o.conf.Log.SpanBatchSize),
+		logsdk.WithExportInterval(time.Duration(o.conf.Log.AutoRotateTime) * time.Second),
+		logsdk.WithExportTimeout(time.Duration(o.conf.Log.ExportTimeout) * time.Second),
+	}
+
+	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
+	for k, v := range o.app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+
+	lp := logsdk.NewLoggerProvider(
+		logsdk.WithProcessor(logsdk.NewBatchProcessor(exporter, batcherOpts...)),
+		logsdk.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(o.app.Name()),
+			attribute.Key("app").String(o.app.Name()),
+			attribute.String("debug", cast.ToString(o.app.GetConfig().Config().Frame.Debug)),
+			attribute.String("env", o.app.GetConfig().Config().Frame.Env),
+			attribute.String("flags", strings.Join(o.app.GetConfig().Config().Frame.Flags, ",")),
+			attribute.String("labels", strings.Join(labels, ",")),
+		)),
+	)
+	global.SetLoggerProvider(lp)
+
+	o.logProvider = lp
 }
 
 func (o *OtlpPlugin) Trace() {
@@ -189,6 +250,11 @@ func (o *OtlpPlugin) Inject(a ...interface{}) {}
 func (o *OtlpPlugin) Start() error { return nil }
 
 func (o *OtlpPlugin) Close() error {
+	if o.logProvider != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
+		_ = o.logProvider.Shutdown(ctx)
+	}
 	if o.traceProvider != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
@@ -202,6 +268,14 @@ func (o *OtlpPlugin) Close() error {
 	return nil
 }
 
+var logCore *otelzap.Core
+
+func ZapLogCore() *otelzap.Core {
+	if logCore == nil {
+		logCore = otelzap.NewCore(Name, otelzap.WithLoggerProvider(global.GetLoggerProvider()))
+	}
+	return logCore
+}
 func Trace() trace.Tracer {
 	return otel.Tracer(Name)
 }

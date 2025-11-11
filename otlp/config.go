@@ -6,6 +6,15 @@ const (
 	defRetryMaxIntervalSec     = 30
 	defRetryMaxElapsedTimeSec  = 60
 
+	defLogEnabled        = true
+	defLogAddr           = "http://localhost:4318"
+	defLogURLPath        = "/v1/logs"
+	defLogGzip           = true
+	defLogSpanQueueSize  = 8192
+	defLogSpanBatchSize  = 2048
+	defLogAutoRotateTime = 5
+	defLogExportTimeout  = 30
+
 	defTraceEnabled              = true
 	defTraceAddr                 = "http://localhost:4318"
 	defTraceURLPath              = "/v1/traces"
@@ -31,6 +40,19 @@ type RetryConfig struct {
 	MaxIntervalSec     int64 // 最大重试间隔秒数
 	MaxElapsedTimeSec  int64 // 超过这个秒数后则放弃这一批数据
 }
+type LogConfig struct {
+	Enabled bool   // 是否启用
+	Addr    string // 地址, 如 http://localhost:4318
+	URLPath string // path, 如 /v1/logs
+	Gzip    bool   // 是否启用gzip压缩
+
+	SpanQueueSize  int // 待上传的span队列大小. 超出的log会被丢弃
+	SpanBatchSize  int // log信息批次发送大小, 存满后一次性发送
+	AutoRotateTime int // 自动旋转时间(秒), 如果没有达到累计输出批次大小, 在指定时间后也会立即输出
+	ExportTimeout  int // 上传span超时时间(秒)
+
+	Retry RetryConfig // 重试配置
+}
 type TraceConfig struct {
 	Enabled bool   // 是否启用
 	Addr    string // 地址, 如 http://localhost:4318
@@ -39,7 +61,7 @@ type TraceConfig struct {
 
 	SamplerFraction      float64 // 采样器采样率, <= 0.0 表示不采样, 1.0 表示总是采样
 	SpanQueueSize        int     // 待上传的span队列大小. 超出的span会被丢弃
-	SpanBatchSize        int     // span信息批次发送大小, 存满后一次性发送到jaeger
+	SpanBatchSize        int     // span信息批次发送大小, 存满后一次性发送
 	BlockOnSpanQueueFull bool    // 如果span队列满了, 不会丢弃新的span, 而是阻塞直到有空间. 注意, 开启后如果发生阻塞会影响程序性能.
 	AutoRotateTime       int     // 自动旋转时间(秒), 如果没有达到累计输出批次大小, 在指定时间后也会立即输出
 	ExportTimeout        int     // 上传span超时时间(秒)
@@ -59,12 +81,29 @@ type MetricConfig struct {
 }
 
 type Config struct {
+	Log    LogConfig
 	Trace  TraceConfig  // trace 配置
 	Metric MetricConfig // metric 配置
 }
 
 func newConfig() *Config {
 	return &Config{
+		Log: LogConfig{
+			Enabled:        defLogEnabled,
+			Addr:           defLogAddr,
+			URLPath:        defLogURLPath,
+			Gzip:           defLogGzip,
+			SpanQueueSize:  defLogSpanQueueSize,
+			SpanBatchSize:  defLogSpanBatchSize,
+			AutoRotateTime: defLogAutoRotateTime,
+			ExportTimeout:  defLogExportTimeout,
+			Retry: RetryConfig{
+				Enabled:            defRetryEnabled,
+				InitialIntervalSec: defRetryInitialIntervalSec,
+				MaxIntervalSec:     defRetryMaxIntervalSec,
+				MaxElapsedTimeSec:  defRetryMaxElapsedTimeSec,
+			},
+		},
 		Trace: TraceConfig{
 			Enabled:              defTraceEnabled,
 			Addr:                 defTraceAddr,
@@ -101,6 +140,37 @@ func newConfig() *Config {
 }
 
 func (conf *Config) Check() error {
+	if conf.Log.Addr == "" {
+		conf.Log.Addr = defLogAddr
+	}
+	if conf.Log.URLPath == "" {
+		conf.Log.URLPath = defLogURLPath
+	}
+	if conf.Log.SpanBatchSize < 1 {
+		conf.Log.SpanBatchSize = defLogSpanBatchSize
+	}
+	if conf.Log.SpanQueueSize < 1 {
+		conf.Log.SpanQueueSize = defLogSpanQueueSize
+	}
+	if conf.Log.SpanQueueSize < conf.Log.SpanBatchSize {
+		conf.Log.SpanQueueSize = conf.Log.SpanBatchSize
+	}
+	if conf.Log.AutoRotateTime < 1 {
+		conf.Log.AutoRotateTime = defLogAutoRotateTime
+	}
+	if conf.Log.ExportTimeout < 1 {
+		conf.Log.ExportTimeout = defLogExportTimeout
+	}
+	if conf.Log.Retry.InitialIntervalSec < 1 {
+		conf.Log.Retry.InitialIntervalSec = defRetryInitialIntervalSec
+	}
+	if conf.Log.Retry.MaxIntervalSec < 1 {
+		conf.Log.Retry.MaxIntervalSec = defRetryMaxIntervalSec
+	}
+	if conf.Log.Retry.MaxElapsedTimeSec < 1 {
+		conf.Log.Retry.MaxElapsedTimeSec = defRetryMaxElapsedTimeSec
+	}
+
 	if conf.Trace.Addr == "" {
 		conf.Trace.Addr = defTraceAddr
 	}
