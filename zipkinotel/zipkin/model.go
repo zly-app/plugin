@@ -135,14 +135,37 @@ func toZipkinAnnotations(events []tracesdk.Event) []zkmodel.Annotation {
 	}
 	annotations := make([]zkmodel.Annotation, 0, len(events))
 	for _, event := range events {
-		value := event.Name
-		if len(event.Attributes) > 0 {
-			value = attributesToJSONMapString(event.Name, event.Attributes)
+		if len(event.Attributes) == 0 {
+			annotations = append(annotations, zkmodel.Annotation{
+				Timestamp: event.Time,
+				Value:     event.Name,
+			})
+			continue
 		}
+
+		if len(event.Attributes) > 1 {
+			value := attributesToJSONMapString(event.Name, event.Attributes)
+			annotations = append(annotations, zkmodel.Annotation{
+				Timestamp: event.Time,
+				Value:     value,
+			})
+		}
+
+		a := event.Attributes[0]
+		m := make(map[string]interface{}, 1)
+		if string(a.Key) == "data" {
+			m[event.Name] = a.Value.AsInterface()
+		} else {
+			m["_event"] = event
+			m[(string)(a.Key)] = a.Value.AsInterface()
+		}
+		jsonBytes, _ := sonic.Marshal(m)
 		annotations = append(annotations, zkmodel.Annotation{
 			Timestamp: event.Time,
-			Value:     value,
+			Value:     string(jsonBytes),
 		})
+		continue
+
 	}
 	return annotations
 }
