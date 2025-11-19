@@ -19,7 +19,6 @@ import (
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -115,8 +114,8 @@ func (o *OtlpPlugin) Trace() {
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exporter, batcherOpts...),
 		tracesdk.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(o.app.Name()),
+			Name,
+			attribute.Key("service.name").String(o.app.Name()),
 			attribute.Key("app").String(o.app.Name()),
 			attribute.String("debug", cast.ToString(o.app.GetConfig().Config().Frame.Debug)),
 			attribute.String("env", o.app.GetConfig().Config().Frame.Env),
@@ -160,7 +159,16 @@ func (o *OtlpPlugin) Metrics() {
 		o.app.Fatal("无法创建 otlp metric 导出器", zap.Error(err))
 	}
 
+	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
+	for k, v := range o.app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
 	mp := metricsdk.NewMeterProvider(
+		metricsdk.WithResource(resource.NewWithAttributes(
+			Name,
+			attribute.Key("service.name").String(o.app.Name()),
+		)),
 		metricsdk.WithReader(metricsdk.NewPeriodicReader(exporter,
 			metricsdk.WithInterval(time.Duration(o.conf.Metric.AutoRotateTime)*time.Second),
 			metricsdk.WithTimeout(time.Duration(o.conf.Metric.ExportTimeout)*time.Second),
@@ -170,19 +178,7 @@ func (o *OtlpPlugin) Metrics() {
 	otel.SetMeterProvider(mp)
 	o.metricProvider = mp
 
-	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
-	for k, v := range o.app.GetConfig().Config().Frame.Labels {
-		labels = append(labels, k+"="+v)
-	}
-	sort.Strings(labels)
-	o.metricMeter = mp.Meter(Name, metric.WithInstrumentationAttributes(
-		semconv.ServiceNameKey.String(o.app.Name()),
-		attribute.Key("app").String(o.app.Name()),
-		attribute.Bool("debug", o.app.GetConfig().Config().Frame.Debug),
-		attribute.String("env", o.app.GetConfig().Config().Frame.Env),
-		attribute.StringSlice("flags", o.app.GetConfig().Config().Frame.Flags),
-		attribute.StringSlice("labels", labels),
-	))
+	o.metricMeter = mp.Meter(Name)
 }
 
 func (o *OtlpPlugin) Inject(a ...interface{}) {}

@@ -1,12 +1,15 @@
 package otlp
 
 import (
+	zapp_metrics "github.com/zly-app/zapp/component/metrics"
 	"go.uber.org/zap"
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/pkg/zlog"
 	"github.com/zly-app/zapp/plugin"
+
+	"github.com/zly-app/plugin/otlp/metrics"
 )
 
 // 默认插件类型
@@ -22,7 +25,7 @@ func init() {
 
 		client := NewOtlpPlugin(app, conf)
 		if conf.Metric.Enabled {
-			// metrics.SetClient(client)
+			zapp_metrics.SetClient(metrics.NewClient(client.metricMeter))
 		}
 		return client
 	})
