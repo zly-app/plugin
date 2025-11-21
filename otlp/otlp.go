@@ -9,6 +9,11 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cast"
+	"github.com/zly-app/zapp/component/metrics"
+	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp/log"
+	"go.opentelemetry.io/contrib/instrumentation/host"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
@@ -21,9 +26,6 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-
-	"github.com/zly-app/zapp/component/metrics"
-	"github.com/zly-app/zapp/core"
 )
 
 const Name = "github.com/zly-app/plugin/otlp"
@@ -142,6 +144,7 @@ func (o *OtlpPlugin) Metrics() {
 		compress = otlpmetrichttp.GzipCompression
 	}
 
+	// 定义导出器
 	otlpMetricOpts := []otlpmetrichttp.Option{
 		otlpmetrichttp.WithEndpointURL(o.conf.Metric.Addr),
 		otlpmetrichttp.WithURLPath(o.conf.Metric.URLPath),
@@ -153,22 +156,52 @@ func (o *OtlpPlugin) Metrics() {
 			MaxElapsedTime:  time.Duration(o.conf.Metric.Retry.MaxElapsedTimeSec) * time.Second,
 		}),
 	}
-
 	exporter, err := otlpmetrichttp.New(context.Background(), otlpMetricOpts...)
 	if err != nil {
-		o.app.Fatal("无法创建 otlp metric 导出器", zap.Error(err))
+		o.app.Fatal("can not create otlp metric exporter", zap.Error(err))
 	}
 
-	mp := metricsdk.NewMeterProvider(
-		metricsdk.WithResource(resource.NewWithAttributes(
-			Name,
-			attribute.Key("service.name").String(o.app.Name()),
-		)),
+	// 定义资源
+	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
+	for k, v := range o.app.GetConfig().Config().Frame.Labels {
+		labels = append(labels, k+"="+v)
+	}
+	sort.Strings(labels)
+	flags := make([]string, len(o.app.GetConfig().Config().Frame.Flags))
+	copy(flags, o.app.GetConfig().Config().Frame.Flags)
+	sort.Strings(flags)
+	res := resource.NewWithAttributes(
+		Name,
+		attribute.Key("service.name").String(o.app.Name()),
+		attribute.Key("app").String(o.app.Name()),
+		attribute.Key("debug").Bool(o.app.GetConfig().Config().Frame.Debug),
+		attribute.Key("env").String(o.app.GetConfig().Config().Frame.Env),
+		attribute.Key("flags").StringSlice(flags),
+		attribute.Key("labels").StringSlice(labels),
+	)
+
+	mpOpts := []metricsdk.Option{
+		metricsdk.WithResource(res),
 		metricsdk.WithReader(metricsdk.NewPeriodicReader(exporter,
 			metricsdk.WithInterval(time.Duration(o.conf.Metric.AutoRotateTime)*time.Second),
 			metricsdk.WithTimeout(time.Duration(o.conf.Metric.ExportTimeout)*time.Second),
 		)),
-	)
+	}
+
+	mp := metricsdk.NewMeterProvider(mpOpts...)
+
+	// 启动主机指标收集 (进程指标)
+	if o.conf.Metric.ProcessCollector {
+		if err := host.Start(host.WithMeterProvider(mp)); err != nil {
+			log.Warn("collection of the ProcessCollector failed", zap.Error(err))
+		}
+	}
+	// 启动Go运行时指标
+	if o.conf.Metric.GoCollector {
+		if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
+			log.Warn("collection of the GoCollector failed", zap.Error(err))
+		}
+	}
 
 	otel.SetMeterProvider(mp)
 	o.metricProvider = mp

@@ -1,10 +1,8 @@
 package metrics
 
 import (
-	"sort"
 	"sync"
 
-	"github.com/zly-app/zapp"
 	zapp_metrics "github.com/zly-app/zapp/component/metrics"
 	"github.com/zly-app/zapp/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -14,8 +12,7 @@ import (
 )
 
 type clientCli struct {
-	meter     metric.Meter
-	constAttr metric.MeasurementOption
+	meter metric.Meter
 
 	counterCollector       map[string]zapp_metrics.ICounter // 计数器
 	counterCollectorLocker sync.RWMutex
@@ -28,28 +25,8 @@ type clientCli struct {
 }
 
 func NewClient(meter metric.Meter) zapp_metrics.Client {
-	app := zapp.App()
-	labels := make([]string, 0, len(app.GetConfig().Config().Frame.Labels))
-	for k, v := range app.GetConfig().Config().Frame.Labels {
-		labels = append(labels, k+"="+v)
-	}
-	sort.Strings(labels)
-
-	flags := make([]string, len(app.GetConfig().Config().Frame.Flags))
-	copy(flags, app.GetConfig().Config().Frame.Flags)
-	sort.Strings(flags)
-
-	constAttr := metric.WithAttributeSet(attribute.NewSet(
-		attribute.Key("app").String(app.Name()),
-		attribute.Key("debug").Bool(app.GetConfig().Config().Frame.Debug),
-		attribute.Key("env").String(app.GetConfig().Config().Frame.Env),
-		attribute.Key("flags").StringSlice(flags),
-		attribute.Key("labels").StringSlice(labels),
-	))
-
 	return &clientCli{
 		meter:              meter,
-		constAttr:          constAttr,
 		counterCollector:   make(map[string]zapp_metrics.ICounter),
 		gaugeCollector:     make(map[string]zapp_metrics.IGauge),
 		histogramCollector: make(map[string]zapp_metrics.IHistogram),
@@ -72,7 +49,6 @@ func (c *clientCli) RegistryCounter(name, help string, constLabels zapp_metrics.
 	} else {
 		ret = &counterCli{
 			name:       name,
-			constAttr:  c.constAttr,
 			constLabel: genLabels(constLabels),
 			counter:    counter,
 		}
@@ -111,7 +87,6 @@ func (c *clientCli) RegistryGauge(name, help string, constLabels zapp_metrics.La
 		ret = &gaugeCli{
 			name:       name,
 			v:          atomic.NewFloat64(0),
-			constAttr:  c.constAttr,
 			constLabel: genLabels(constLabels),
 			gauge:      gauge,
 		}
@@ -148,7 +123,6 @@ func (c *clientCli) RegistryHistogram(name, help string, buckets []float64, cons
 	} else {
 		ret = &histogramCli{
 			name:       name,
-			constAttr:  c.constAttr,
 			constLabel: genLabels(constLabels),
 			histogram:  histogram,
 		}

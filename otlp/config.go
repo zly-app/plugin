@@ -30,6 +30,8 @@ const (
 	defMetricAddr           = "http://localhost:4318"
 	defMetricURLPath        = "/v1/metrics"
 	defMetricGzip           = true
+	defProcessCollector     = true
+	defGoCollector          = true
 	defMetricAutoRotateTime = 5
 	defMetricExportTimeout  = 30
 )
@@ -73,6 +75,9 @@ type MetricConfig struct {
 	Addr    string // 地址, 如 http://localhost:4318
 	URLPath string // path, 如 /v1/metrics
 	Gzip    bool   // 是否启用gzip压缩
+
+	ProcessCollector bool // 启用进程收集器
+	GoCollector      bool // 启用go收集器
 
 	AutoRotateTime int // 自动旋转时间(秒)
 	ExportTimeout  int // 上传metric超时时间(秒)
@@ -123,12 +128,14 @@ func newConfig() *Config {
 			},
 		},
 		Metric: MetricConfig{
-			Enabled:        defMetricEnabled,
-			Addr:           defMetricAddr,
-			URLPath:        defMetricURLPath,
-			Gzip:           defMetricGzip,
-			AutoRotateTime: defMetricAutoRotateTime,
-			ExportTimeout:  defMetricExportTimeout,
+			Enabled:          defMetricEnabled,
+			Addr:             defMetricAddr,
+			URLPath:          defMetricURLPath,
+			Gzip:             defMetricGzip,
+			ProcessCollector: defProcessCollector,
+			GoCollector:      defGoCollector,
+			AutoRotateTime:   defMetricAutoRotateTime,
+			ExportTimeout:    defMetricExportTimeout,
 			Retry: RetryConfig{
 				Enabled:            defRetryEnabled,
 				InitialIntervalSec: defRetryInitialIntervalSec,
