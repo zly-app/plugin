@@ -34,11 +34,16 @@ func NewClient(meter metric.Meter) zapp_metrics.Client {
 		labels = append(labels, k+"="+v)
 	}
 	sort.Strings(labels)
+
+	flags := make([]string, len(app.GetConfig().Config().Frame.Flags))
+	copy(flags, app.GetConfig().Config().Frame.Flags)
+	sort.Strings(flags)
+
 	constAttr := metric.WithAttributeSet(attribute.NewSet(
 		attribute.Key("app").String(app.Name()),
 		attribute.Key("debug").Bool(app.GetConfig().Config().Frame.Debug),
 		attribute.Key("env").String(app.GetConfig().Config().Frame.Env),
-		attribute.Key("flags").StringSlice(app.GetConfig().Config().Frame.Flags),
+		attribute.Key("flags").StringSlice(flags),
 		attribute.Key("labels").StringSlice(labels),
 	))
 

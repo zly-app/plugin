@@ -159,11 +159,6 @@ func (o *OtlpPlugin) Metrics() {
 		o.app.Fatal("无法创建 otlp metric 导出器", zap.Error(err))
 	}
 
-	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
-	for k, v := range o.app.GetConfig().Config().Frame.Labels {
-		labels = append(labels, k+"="+v)
-	}
-	sort.Strings(labels)
 	mp := metricsdk.NewMeterProvider(
 		metricsdk.WithResource(resource.NewWithAttributes(
 			Name,
