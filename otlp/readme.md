@@ -71,6 +71,8 @@ plugins:
       Enabled: true # 是否启用
       Addr: '' # 地址, 如 http://localhost:9411
       Gzip: true # 是否启用gzip压缩
+      ProcessCollector: true # 是否启用进程收集器
+      GoCollector: true # 是否启用go收集器
       AutoRotateTime: 5 # 自动旋转时间(秒)
       ExportTimeout: 30 # 上传metric超时时间(秒)
       Retry: # 重试配置
