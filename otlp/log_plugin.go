@@ -2,6 +2,7 @@ package otlp
 
 import (
 	"context"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,7 @@ func (p *logPlugin) Log() {
 		labels = append(labels, k+"="+v)
 	}
 
+	pid := os.Getpid()
 	lp := logsdk.NewLoggerProvider(
 		logsdk.WithProcessor(logsdk.NewBatchProcessor(exporter, batcherOpts...)),
 		logsdk.WithResource(resource.NewWithAttributes(
@@ -90,8 +92,10 @@ func (p *logPlugin) Log() {
 			attribute.Key("app").String(p.app.Name()),
 			attribute.String("debug", cast.ToString(p.app.GetConfig().Config().Frame.Debug)),
 			attribute.String("env", p.app.GetConfig().Config().Frame.Env),
+			attribute.String("instance", cast.ToString(p.app.GetConfig().Config().Frame.Instance)),
 			attribute.String("flags", strings.Join(p.app.GetConfig().Config().Frame.Flags, ",")),
 			attribute.String("labels", strings.Join(labels, ",")),
+			attribute.Int("process.pid", pid),
 		)),
 	)
 	global.SetLoggerProvider(lp)

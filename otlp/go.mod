@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/shirou/gopsutil/v4 v4.25.7
 	github.com/spf13/cast v1.3.0
 	github.com/zly-app/zapp v1.3.25
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0
@@ -47,7 +48,6 @@ require (
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.10 // indirect
-	github.com/shirou/gopsutil/v4 v4.25.7 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.3 // indirect

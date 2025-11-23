@@ -2,12 +2,14 @@ package otlp
 
 import (
 	"context"
+	"os"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/spf13/cast"
 	"github.com/zly-app/zapp/component/metrics"
 	"github.com/zly-app/zapp/core"
@@ -113,6 +115,8 @@ func (o *OtlpPlugin) Trace() {
 		labels = append(labels, k+"="+v)
 	}
 	sort.Strings(labels)
+
+	pid := os.Getpid()
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exporter, batcherOpts...),
 		tracesdk.WithResource(resource.NewWithAttributes(
@@ -121,8 +125,10 @@ func (o *OtlpPlugin) Trace() {
 			attribute.Key("app").String(o.app.Name()),
 			attribute.String("debug", cast.ToString(o.app.GetConfig().Config().Frame.Debug)),
 			attribute.String("env", o.app.GetConfig().Config().Frame.Env),
+			attribute.String("instance", cast.ToString(o.app.GetConfig().Config().Frame.Instance)),
 			attribute.String("flags", strings.Join(o.app.GetConfig().Config().Frame.Flags, ",")),
 			attribute.String("labels", strings.Join(labels, ",")),
+			attribute.Int("process.pid", pid),
 		)),
 		tracesdk.WithSampler(
 			tracesdk.TraceIDRatioBased(o.conf.Trace.SamplerFraction),
@@ -162,6 +168,7 @@ func (o *OtlpPlugin) Metrics() {
 	}
 
 	// 定义资源
+	pid := os.Getpid()
 	labels := make([]string, 0, len(o.app.GetConfig().Config().Frame.Labels))
 	for k, v := range o.app.GetConfig().Config().Frame.Labels {
 		labels = append(labels, k+"="+v)
@@ -176,8 +183,10 @@ func (o *OtlpPlugin) Metrics() {
 		attribute.Key("app").String(o.app.Name()),
 		attribute.Key("debug").Bool(o.app.GetConfig().Config().Frame.Debug),
 		attribute.Key("env").String(o.app.GetConfig().Config().Frame.Env),
+		attribute.String("instance", cast.ToString(o.app.GetConfig().Config().Frame.Instance)),
 		attribute.Key("flags").StringSlice(flags),
 		attribute.Key("labels").StringSlice(labels),
+		attribute.Int("process.pid", pid),
 	)
 
 	mpOpts := []metricsdk.Option{
@@ -189,11 +198,49 @@ func (o *OtlpPlugin) Metrics() {
 	}
 
 	mp := metricsdk.NewMeterProvider(mpOpts...)
+	otel.SetMeterProvider(mp)
+
+	o.metricProvider = mp
+	o.metricMeter = mp.Meter(Name)
 
 	// 启动主机指标收集 (进程指标)
 	if o.conf.Metric.ProcessCollector {
 		if err := host.Start(host.WithMeterProvider(mp)); err != nil {
 			log.Warn("collection of the ProcessCollector failed", zap.Error(err))
+		}
+		processResidentMemory, err := o.metricMeter.Int64ObservableGauge(
+			"process_resident_memory_bytes",
+			metric.WithDescription("进程占用内存字节."),
+			metric.WithUnit("By"),
+		)
+		if err != nil {
+			log.Warn("collection of the process_resident_memory_bytes failed", zap.Error(err))
+		} else {
+			_, err = o.metricMeter.RegisterCallback(
+				func(ctx context.Context, obs metric.Observer) error {
+					p, err := process.NewProcess(int32(pid))
+					if err != nil {
+						return err
+					}
+
+					rss, err := p.MemoryInfo()
+					if err != nil {
+						return err
+					}
+
+					// 记录当前进程的 RSS
+					obs.ObserveInt64(processResidentMemory, int64(rss.RSS),
+						metric.WithAttributes(
+							attribute.Int("process.pid", pid),
+						),
+					)
+					return nil
+				},
+				processResidentMemory, // 将回调函数与仪表关联
+			)
+			if err != nil {
+				log.Warn("failed to register process_resident_memory_bytes callback", zap.Error(err))
+			}
 		}
 	}
 	// 启动Go运行时指标
@@ -203,10 +250,6 @@ func (o *OtlpPlugin) Metrics() {
 		}
 	}
 
-	otel.SetMeterProvider(mp)
-	o.metricProvider = mp
-
-	o.metricMeter = mp.Meter(Name)
 }
 
 func (o *OtlpPlugin) Inject(a ...interface{}) {}
