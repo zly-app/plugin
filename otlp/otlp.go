@@ -195,6 +195,9 @@ func (o *OtlpPlugin) Metrics() {
 			metricsdk.WithInterval(time.Duration(o.conf.Metric.AutoRotateTime)*time.Second),
 			metricsdk.WithTimeout(time.Duration(o.conf.Metric.ExportTimeout)*time.Second),
 		)),
+		metricsdk.WithExemplarFilter(func(ctx context.Context) bool {
+			return trace.SpanContextFromContext(ctx).IsValid()
+		}),
 	}
 
 	mp := metricsdk.NewMeterProvider(mpOpts...)

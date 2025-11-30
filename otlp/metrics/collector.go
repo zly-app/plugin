@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/zly-app/zapp/component/metrics"
+	"github.com/zly-app/zapp/pkg/utils"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/atomic"
 )
@@ -16,11 +17,13 @@ type counterCli struct {
 }
 
 func (c *counterCli) Inc(labels metrics.Labels, exemplar metrics.Labels) {
-	c.Add(1, labels, exemplar)
+	ctx := extractContext(exemplar)
+	c.counter.Add(ctx, 1, c.constLabel, genLabels(labels))
 }
 
 func (c *counterCli) Add(v float64, labels metrics.Labels, exemplar metrics.Labels) {
-	c.counter.Add(context.Background(), v, c.constLabel, genLabels(labels, exemplar))
+	ctx := extractContext(exemplar)
+	c.counter.Add(ctx, v, c.constLabel, genLabels(labels))
 }
 
 type gaugeCli struct {
@@ -63,5 +66,15 @@ type histogramCli struct {
 }
 
 func (h *histogramCli) Observe(v float64, labels metrics.Labels, exemplar metrics.Labels) {
-	h.histogram.Record(context.Background(), v, h.constLabel, genLabels(labels, exemplar))
+	ctx := extractContext(exemplar)
+	h.histogram.Record(ctx, v, h.constLabel, genLabels(labels))
+}
+
+func extractContext(exemplar metrics.Labels) context.Context {
+	if exemplar == nil {
+		return context.Background()
+	}
+
+	ctx, _ := utils.Otel.GetSpanWithMap(context.Background(), exemplar)
+	return ctx
 }
