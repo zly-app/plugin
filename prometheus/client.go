@@ -19,7 +19,7 @@ import (
 	"github.com/zly-app/zapp/component/metrics"
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/handler"
-	"github.com/zly-app/zapp/logger"
+	"github.com/zly-app/zapp/log"
 )
 
 type Client struct {
@@ -83,7 +83,7 @@ func NewClient(app core.IApp, conf *Config) *Client {
 	}
 	err := p.registryCollector(coll...)
 	if err != nil {
-		logger.Fatal("注册默认收集器失败", zap.Error(err))
+		log.Fatal("注册默认收集器失败", zap.Error(err))
 	}
 	return p
 }
@@ -108,7 +108,7 @@ func (p *Client) startPullMode(conf *Config) {
 	// 开始监听
 	go func(server *http.Server) {
 		if err := server.ListenAndServe(); err != nil {
-			logger.Log.Fatal("启动pull模式失败", zap.Error(err))
+			log.Log.Fatal("启动pull模式失败", zap.Error(err))
 		}
 	}(server)
 }

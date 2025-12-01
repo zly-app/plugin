@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/zly-app/zapp/component/metrics"
-	"github.com/zly-app/zapp/logger"
+	"github.com/zly-app/zapp/log"
 )
 
 type counterCli struct {
@@ -20,7 +20,7 @@ func (c *counterCli) Inc(labels metrics.Labels, exemplar metrics.Labels) {
 func (c *counterCli) Add(v float64, labels metrics.Labels, exemplar metrics.Labels) {
 	counter, err := c.counter.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Counter 计数器失败", zap.String("name", c.name), zap.Error(err))
+		log.Error("获取 metrics Counter 计数器失败", zap.String("name", c.name), zap.Error(err))
 		return
 	}
 	if exemplar != nil {
@@ -28,7 +28,7 @@ func (c *counterCli) Add(v float64, labels metrics.Labels, exemplar metrics.Labe
 			coll.AddWithExemplar(v, exemplar)
 			return
 		}
-		logger.Error("metrics Counter 计数器无法报告 Exemplar", zap.String("name", c.name), zap.Error(err))
+		log.Error("metrics Counter 计数器无法报告 Exemplar", zap.String("name", c.name), zap.Error(err))
 	}
 	counter.Add(v)
 }
@@ -41,7 +41,7 @@ type gaugeCli struct {
 func (g *gaugeCli) Set(v float64, labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.Set(v)
@@ -49,7 +49,7 @@ func (g *gaugeCli) Set(v float64, labels metrics.Labels) {
 func (g *gaugeCli) Inc(labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.Inc()
@@ -57,7 +57,7 @@ func (g *gaugeCli) Inc(labels metrics.Labels) {
 func (g *gaugeCli) Dec(labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.Dec()
@@ -65,7 +65,7 @@ func (g *gaugeCli) Dec(labels metrics.Labels) {
 func (g *gaugeCli) Add(v float64, labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.Add(v)
@@ -73,7 +73,7 @@ func (g *gaugeCli) Add(v float64, labels metrics.Labels) {
 func (g *gaugeCli) Sub(v float64, labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.Sub(v)
@@ -81,7 +81,7 @@ func (g *gaugeCli) Sub(v float64, labels metrics.Labels) {
 func (g *gaugeCli) SetToCurrentTime(labels metrics.Labels) {
 	gauge, err := g.gauge.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
+		log.Error("获取 metrics Gauge 计量器失败", zap.String("name", g.name), zap.Error(err))
 		return
 	}
 	gauge.SetToCurrentTime()
@@ -95,7 +95,7 @@ type histogramCli struct {
 func (h *histogramCli) Observe(v float64, labels metrics.Labels, exemplar metrics.Labels) {
 	histogram, err := h.histogram.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Histogram 直方图失败", zap.String("name", h.name), zap.Error(err))
+		log.Error("获取 metrics Histogram 直方图失败", zap.String("name", h.name), zap.Error(err))
 		return
 	}
 	if exemplar != nil {
@@ -103,7 +103,7 @@ func (h *histogramCli) Observe(v float64, labels metrics.Labels, exemplar metric
 			coll.ObserveWithExemplar(v, exemplar)
 			return
 		}
-		logger.Error("metrics Histogram 直方图无法报告 Exemplar", zap.String("name", h.name), zap.Error(err))
+		log.Error("metrics Histogram 直方图无法报告 Exemplar", zap.String("name", h.name), zap.Error(err))
 	}
 	histogram.Observe(v)
 }
@@ -116,7 +116,7 @@ type summaryCli struct {
 func (s *summaryCli) Observe(v float64, labels metrics.Labels, exemplar metrics.Labels) {
 	summary, err := s.summary.GetMetricWith(labels)
 	if err != nil {
-		logger.Error("获取 metrics Summary 汇总失败", zap.String("name", s.name), zap.Error(err))
+		log.Error("获取 metrics Summary 汇总失败", zap.String("name", s.name), zap.Error(err))
 		return
 	}
 	if exemplar != nil {
@@ -124,7 +124,7 @@ func (s *summaryCli) Observe(v float64, labels metrics.Labels, exemplar metrics.
 			coll.ObserveWithExemplar(v, exemplar)
 			return
 		}
-		logger.Error("metrics Summary 汇总无法报告 Exemplar", zap.String("name", s.name), zap.Error(err))
+		log.Error("metrics Summary 汇总无法报告 Exemplar", zap.String("name", s.name), zap.Error(err))
 	}
 	summary.Observe(v)
 }

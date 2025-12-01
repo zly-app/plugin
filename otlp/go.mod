@@ -6,7 +6,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/shirou/gopsutil/v4 v4.25.7
 	github.com/spf13/cast v1.3.0
-	github.com/zly-app/zapp v1.3.25
+	github.com/zly-app/zapp v1.4.0
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0
 	go.opentelemetry.io/contrib/instrumentation/host v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.63.0

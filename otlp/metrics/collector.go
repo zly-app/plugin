@@ -75,6 +75,6 @@ func extractContext(exemplar metrics.Labels) context.Context {
 		return context.Background()
 	}
 
-	ctx, _ := utils.Otel.GetSpanWithMap(context.Background(), exemplar)
+	ctx, _ := utils.Trace.GetSpanWithMap(context.Background(), exemplar)
 	return ctx
 }

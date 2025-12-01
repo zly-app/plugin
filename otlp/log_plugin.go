@@ -20,7 +20,7 @@ import (
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
-	"github.com/zly-app/zapp/logger"
+	"github.com/zly-app/zapp/log"
 )
 
 type logPlugin struct {
@@ -39,7 +39,7 @@ func (p *logPlugin) Init() {
 		err = conf.Check()
 	}
 	if err != nil {
-		logger.Fatal("解析 otlp 配置失败", zap.Error(err))
+		log.Fatal("解析 otlp 配置失败", zap.Error(err))
 	}
 	p.app = zapp.App()
 	p.conf = conf
