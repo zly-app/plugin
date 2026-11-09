@@ -10,7 +10,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/zly-app/zapp/core"
-	"github.com/zly-app/zapp/logger"
+	"github.com/zly-app/zapp/log"
 	"github.com/zly-app/zapp/pkg/utils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -52,7 +52,7 @@ func NewZipkinPlugin(app core.IApp) core.IPlugin {
 	if conf.ProxyAddress != "" {
 		p, err := utils.NewHttpProxy(conf.ProxyAddress)
 		if err != nil {
-			logger.Log.Fatal("创建loki-http代理失败", zap.Error(err))
+			log.Log.Fatal("创建loki-http代理失败", zap.Error(err))
 		}
 		p.SetProxy(transport)
 	}

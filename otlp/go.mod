@@ -1,12 +1,12 @@
 module github.com/zly-app/plugin/otlp
 
-go 1.23.0
+go 1.24.1
 
 require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/shirou/gopsutil/v4 v4.25.7
 	github.com/spf13/cast v1.3.0
-	github.com/zly-app/zapp v1.4.0
+	github.com/zly-app/zapp v1.4.6
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0
 	go.opentelemetry.io/contrib/instrumentation/host v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.63.0
@@ -28,8 +28,8 @@ require (
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
-	github.com/bytedance/sonic v1.14.2 // indirect
-	github.com/bytedance/sonic/loader v0.4.0 // indirect
+	github.com/bytedance/sonic v1.15.5 // indirect
+	github.com/bytedance/sonic/loader v0.5.3 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/ebitengine/purego v0.8.4 // indirect

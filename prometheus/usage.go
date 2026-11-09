@@ -9,10 +9,11 @@ import (
 	"github.com/zly-app/zapp/plugin"
 )
 
-// 默认组件类型
+// PluginType 默认组件类型
 const PluginType core.PluginType = "metrics"
 
-func init() {
+// WithPlugin 启用插件，必须在 zapp 初始化前调用。
+func WithPlugin() zapp.Option {
 	plugin.RegisterCreatorFunc(PluginType, func(app core.IApp) core.IPlugin {
 		conf := newConfig()
 		err := app.GetConfig().ParsePluginConfig(PluginType, conf, true)
@@ -24,9 +25,5 @@ func init() {
 		metrics.SetClient(client)
 		return client
 	})
-}
-
-// 启用插件
-func WithPlugin() zapp.Option {
 	return zapp.WithPlugin(PluginType)
 }

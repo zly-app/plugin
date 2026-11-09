@@ -8,13 +8,10 @@ import (
 
 const defPluginType = "pprof"
 
-func init() {
+// WithPlugin 启用插件，必须在 zapp 初始化前调用。
+func WithPlugin() zapp.Option {
 	plugin.RegisterCreatorFunc(defPluginType, func(app core.IApp) core.IPlugin {
 		return NewPProf(app)
 	})
-}
-
-// 启用插件
-func WithPlugin() zapp.Option {
 	return zapp.WithPlugin(defPluginType)
 }

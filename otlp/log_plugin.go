@@ -126,10 +126,4 @@ func newLogPlugin(setCoreFn func(zapcore.Core)) *logPlugin {
 	return defLog
 }
 
-func init() {
-	zapp.AddHandler(zapp.AfterExitHandler, func(app core.IApp, handlerType zapp.HandlerType) {
-		if defLog != nil {
-			defLog.Close()
-		}
-	})
-}
+

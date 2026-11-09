@@ -12,10 +12,11 @@ import (
 	"github.com/zly-app/plugin/otlp/metrics"
 )
 
-// 默认插件类型
+// DefaultPluginType 默认插件类型
 const DefaultPluginType core.PluginType = "otlp"
 
-func init() {
+// WithPlugin 启用插件，必须在 zapp 初始化前调用。
+func WithPlugin() zapp.Option {
 	plugin.RegisterCreatorFunc(DefaultPluginType, func(app core.IApp) core.IPlugin {
 		conf := newConfig()
 		err := app.GetConfig().ParsePluginConfig(DefaultPluginType, conf, true)
@@ -29,15 +30,18 @@ func init() {
 		}
 		return client
 	})
-}
 
-// 启用插件
-func WithPlugin() zapp.Option {
 	logConf := zlog.NewHookConfig()
 	h := newLogPlugin(logConf.SetCore)
 	logConf.AddStartHookCallbacks(h.Init) // 通过日志启动hook的能力提供初始化
+
 	return zapp.WithMultiOptions(
 		zapp.WithPlugin(DefaultPluginType),
 		zapp.WithLoggerOptions(zlog.WithHookByConfig(logConf)),
+		zapp.WithHandler(zapp.AfterExitHandler, func(app core.IApp, handlerType zapp.HandlerType) {
+			if defLog != nil {
+				defLog.Close()
+			}
+		}),
 	)
 }

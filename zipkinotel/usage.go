@@ -6,16 +6,13 @@ import (
 	"github.com/zly-app/zapp/plugin"
 )
 
-// 默认插件类型
+// DefaultPluginType 默认插件类型
 const DefaultPluginType core.PluginType = "zipkinotel"
 
-func init() {
+// WithPlugin 启用插件，必须在 zapp 初始化前调用。
+func WithPlugin() zapp.Option {
 	plugin.RegisterCreatorFunc(DefaultPluginType, func(app core.IApp) core.IPlugin {
 		return NewZipkinPlugin(app)
 	})
-}
-
-// 启用插件
-func WithPlugin() zapp.Option {
 	return zapp.WithPlugin(DefaultPluginType)
 }
