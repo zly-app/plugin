@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cast"
 	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/log/global"
 	logsdk "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -50,23 +49,7 @@ func (p *logPlugin) Init() {
 }
 
 func (p *logPlugin) Log() {
-	compress := otlploghttp.NoCompression
-	if p.conf.Trace.Gzip {
-		compress = otlploghttp.GzipCompression
-	}
-
-	otlpLogOpts := []otlploghttp.Option{
-		otlploghttp.WithEndpointURL(p.conf.Log.Addr),
-		otlploghttp.WithURLPath(p.conf.Log.URLPath),
-		otlploghttp.WithCompression(compress),
-		otlploghttp.WithRetry(otlploghttp.RetryConfig{
-			Enabled:         p.conf.Log.Retry.Enabled,
-			InitialInterval: time.Duration(p.conf.Log.Retry.InitialIntervalSec) * time.Second,
-			MaxInterval:     time.Duration(p.conf.Log.Retry.MaxIntervalSec) * time.Second,
-			MaxElapsedTime:  time.Duration(p.conf.Log.Retry.MaxElapsedTimeSec) * time.Second,
-		}),
-	}
-	exporter, err := otlploghttp.New(context.Background(), otlpLogOpts...)
+	exporter, err := newLogExporter(p.conf.Log, p.conf.effectiveProtocol(p.conf.Log.Protocol))
 	if err != nil {
 		p.app.Fatal("无法创建 otlp log 导出器", zap.Error(err))
 	}
@@ -125,5 +108,3 @@ func newLogPlugin(setCoreFn func(zapcore.Core)) *logPlugin {
 	})
 	return defLog
 }
-
-

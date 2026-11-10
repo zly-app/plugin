@@ -19,8 +19,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelBridge "go.opentelemetry.io/otel/bridge/opentracing"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
@@ -79,23 +77,7 @@ func NewOtlpPlugin(app core.IApp, conf *Config) *OtlpPlugin {
 }
 
 func (o *OtlpPlugin) Trace() {
-	compress := otlptracehttp.NoCompression
-	if o.conf.Trace.Gzip {
-		compress = otlptracehttp.GzipCompression
-	}
-
-	otlpTraceOpts := []otlptracehttp.Option{
-		otlptracehttp.WithEndpointURL(o.conf.Trace.Addr),
-		otlptracehttp.WithURLPath(o.conf.Trace.URLPath),
-		otlptracehttp.WithCompression(compress),
-		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
-			Enabled:         o.conf.Trace.Retry.Enabled,
-			InitialInterval: time.Duration(o.conf.Trace.Retry.InitialIntervalSec) * time.Second,
-			MaxInterval:     time.Duration(o.conf.Trace.Retry.MaxIntervalSec) * time.Second,
-			MaxElapsedTime:  time.Duration(o.conf.Trace.Retry.MaxElapsedTimeSec) * time.Second,
-		}),
-	}
-	exporter, err := otlptracehttp.New(context.Background(), otlpTraceOpts...)
+	exporter, err := newTraceExporter(o.conf.Trace, o.conf.effectiveProtocol(o.conf.Trace.Protocol))
 	if err != nil {
 		o.app.Fatal("无法创建 otlp trace 导出器", zap.Error(err))
 	}
@@ -145,24 +127,8 @@ func (o *OtlpPlugin) Trace() {
 }
 
 func (o *OtlpPlugin) Metrics() {
-	compress := otlpmetrichttp.NoCompression
-	if o.conf.Metric.Gzip {
-		compress = otlpmetrichttp.GzipCompression
-	}
-
 	// 定义导出器
-	otlpMetricOpts := []otlpmetrichttp.Option{
-		otlpmetrichttp.WithEndpointURL(o.conf.Metric.Addr),
-		otlpmetrichttp.WithURLPath(o.conf.Metric.URLPath),
-		otlpmetrichttp.WithCompression(compress),
-		otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{
-			Enabled:         o.conf.Metric.Retry.Enabled,
-			InitialInterval: time.Duration(o.conf.Metric.Retry.InitialIntervalSec) * time.Second,
-			MaxInterval:     time.Duration(o.conf.Metric.Retry.MaxIntervalSec) * time.Second,
-			MaxElapsedTime:  time.Duration(o.conf.Metric.Retry.MaxElapsedTimeSec) * time.Second,
-		}),
-	}
-	exporter, err := otlpmetrichttp.New(context.Background(), otlpMetricOpts...)
+	exporter, err := newMetricExporter(o.conf.Metric, o.conf.effectiveProtocol(o.conf.Metric.Protocol))
 	if err != nil {
 		o.app.Fatal("can not create otlp metric exporter", zap.Error(err))
 	}

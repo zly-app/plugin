@@ -1,13 +1,29 @@
 package otlp
 
+import (
+	"fmt"
+	"strings"
+)
+
+// OTLP 传输协议, 取值与 OpenTelemetry 规范的 OTEL_EXPORTER_OTLP_PROTOCOL 一致
+const (
+	// ProtocolHTTPProtobuf OTLP/HTTP, protobuf 载荷, 默认端口 4318
+	ProtocolHTTPProtobuf = "http/protobuf"
+	// ProtocolGRPC OTLP/gRPC, 默认端口 4317
+	ProtocolGRPC = "grpc"
+)
+
 const (
 	defRetryEnabled            = true
 	defRetryInitialIntervalSec = 5
 	defRetryMaxIntervalSec     = 30
 	defRetryMaxElapsedTimeSec  = 60
 
+	defProtocol = ProtocolGRPC
+	defHTTPAddr = "http://localhost:4318"
+	defGRPCAddr = "http://localhost:4317"
+
 	defLogEnabled        = true
-	defLogAddr           = "http://localhost:4318"
 	defLogURLPath        = "/v1/logs"
 	defLogGzip           = true
 	defLogSpanQueueSize  = 8192
@@ -16,7 +32,6 @@ const (
 	defLogExportTimeout  = 30
 
 	defTraceEnabled              = true
-	defTraceAddr                 = "http://localhost:4318"
 	defTraceURLPath              = "/v1/traces"
 	defTraceGzip                 = true
 	defTraceSamplerFraction      = 1
@@ -27,7 +42,6 @@ const (
 	defTraceExportTimeout        = 30
 
 	defMetricEnabled        = true
-	defMetricAddr           = "http://localhost:4318"
 	defMetricURLPath        = "/v1/metrics"
 	defMetricGzip           = true
 	defProcessCollector     = true
@@ -43,10 +57,11 @@ type RetryConfig struct {
 	MaxElapsedTimeSec  int64 // 超过这个秒数后则放弃这一批数据
 }
 type LogConfig struct {
-	Enabled bool   // 是否启用
-	Addr    string // 地址, 如 http://localhost:4318
-	URLPath string // path, 如 /v1/logs
-	Gzip    bool   // 是否启用gzip压缩
+	Enabled  bool   // 是否启用
+	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string // path, 如 /v1/logs. 仅 http/protobuf 生效
+	Gzip     bool   // 是否启用gzip压缩
 
 	SpanQueueSize  int // 待上传的span队列大小. 超出的log会被丢弃
 	SpanBatchSize  int // log信息批次发送大小, 存满后一次性发送
@@ -56,10 +71,11 @@ type LogConfig struct {
 	Retry RetryConfig // 重试配置
 }
 type TraceConfig struct {
-	Enabled bool   // 是否启用
-	Addr    string // 地址, 如 http://localhost:4318
-	URLPath string // path, 如 /v1/traces
-	Gzip    bool   // 是否启用gzip压缩
+	Enabled  bool   // 是否启用
+	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string // path, 如 /v1/traces. 仅 http/protobuf 生效
+	Gzip     bool   // 是否启用gzip压缩
 
 	SamplerFraction      float64 // 采样器采样率, <= 0.0 表示不采样, 1.0 表示总是采样
 	SpanQueueSize        int     // 待上传的span队列大小. 超出的span会被丢弃
@@ -71,10 +87,11 @@ type TraceConfig struct {
 	Retry RetryConfig // 重试配置
 }
 type MetricConfig struct {
-	Enabled bool   // 是否启用
-	Addr    string // 地址, 如 http://localhost:4318
-	URLPath string // path, 如 /v1/metrics
-	Gzip    bool   // 是否启用gzip压缩
+	Enabled  bool   // 是否启用
+	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string // path, 如 /v1/metrics. 仅 http/protobuf 生效
+	Gzip     bool   // 是否启用gzip压缩
 
 	ProcessCollector bool // 启用进程收集器
 	GoCollector      bool // 启用go收集器
@@ -86,16 +103,17 @@ type MetricConfig struct {
 }
 
 type Config struct {
-	Log    LogConfig
-	Trace  TraceConfig  // trace 配置
-	Metric MetricConfig // metric 配置
+	Protocol string      // 全局默认传输协议, 可选 grpc / http/protobuf, 为空时使用 grpc
+	Log      LogConfig   // log 配置
+	Trace    TraceConfig // trace 配置
+	Metric   MetricConfig
 }
 
 func newConfig() *Config {
 	return &Config{
+		Protocol: defProtocol,
 		Log: LogConfig{
 			Enabled:        defLogEnabled,
-			Addr:           defLogAddr,
 			URLPath:        defLogURLPath,
 			Gzip:           defLogGzip,
 			SpanQueueSize:  defLogSpanQueueSize,
@@ -111,7 +129,6 @@ func newConfig() *Config {
 		},
 		Trace: TraceConfig{
 			Enabled:              defTraceEnabled,
-			Addr:                 defTraceAddr,
 			URLPath:              defTraceURLPath,
 			Gzip:                 defTraceGzip,
 			SamplerFraction:      defTraceSamplerFraction,
@@ -129,7 +146,6 @@ func newConfig() *Config {
 		},
 		Metric: MetricConfig{
 			Enabled:          defMetricEnabled,
-			Addr:             defMetricAddr,
 			URLPath:          defMetricURLPath,
 			Gzip:             defMetricGzip,
 			ProcessCollector: defProcessCollector,
@@ -147,8 +163,22 @@ func newConfig() *Config {
 }
 
 func (conf *Config) Check() error {
+	var err error
+	if conf.Protocol, err = normalizeProtocol(conf.Protocol); err != nil {
+		return err
+	}
+	if conf.Log.Protocol, err = normalizeProtocol(conf.Log.Protocol); err != nil {
+		return fmt.Errorf("Log 配置错误: %w", err)
+	}
+	if conf.Trace.Protocol, err = normalizeProtocol(conf.Trace.Protocol); err != nil {
+		return fmt.Errorf("Trace 配置错误: %w", err)
+	}
+	if conf.Metric.Protocol, err = normalizeProtocol(conf.Metric.Protocol); err != nil {
+		return fmt.Errorf("Metric 配置错误: %w", err)
+	}
+
 	if conf.Log.Addr == "" {
-		conf.Log.Addr = defLogAddr
+		conf.Log.Addr = defAddr(conf.effectiveProtocol(conf.Log.Protocol))
 	}
 	if conf.Log.URLPath == "" {
 		conf.Log.URLPath = defLogURLPath
@@ -179,7 +209,7 @@ func (conf *Config) Check() error {
 	}
 
 	if conf.Trace.Addr == "" {
-		conf.Trace.Addr = defTraceAddr
+		conf.Trace.Addr = defAddr(conf.effectiveProtocol(conf.Trace.Protocol))
 	}
 	if conf.Trace.URLPath == "" {
 		conf.Trace.URLPath = defTraceURLPath
@@ -210,7 +240,7 @@ func (conf *Config) Check() error {
 	}
 
 	if conf.Metric.Addr == "" {
-		conf.Metric.Addr = defMetricAddr
+		conf.Metric.Addr = defAddr(conf.effectiveProtocol(conf.Metric.Protocol))
 	}
 	if conf.Metric.URLPath == "" {
 		conf.Metric.URLPath = defMetricURLPath
@@ -219,7 +249,7 @@ func (conf *Config) Check() error {
 		conf.Metric.AutoRotateTime = defMetricAutoRotateTime
 	}
 	if conf.Metric.ExportTimeout < 1 {
-		conf.Metric.ExportTimeout = defMetricAutoRotateTime
+		conf.Metric.ExportTimeout = defMetricExportTimeout
 	}
 	if conf.Metric.Retry.InitialIntervalSec < 1 {
 		conf.Metric.Retry.InitialIntervalSec = defRetryInitialIntervalSec
@@ -232,4 +262,37 @@ func (conf *Config) Check() error {
 	}
 
 	return nil
+}
+
+// effectiveProtocol 返回信号最终生效的传输协议: 信号级配置优先, 其次全局配置, 最后默认值
+func (conf *Config) effectiveProtocol(signalProtocol string) string {
+	if signalProtocol != "" {
+		return signalProtocol
+	}
+	if conf.Protocol != "" {
+		return conf.Protocol
+	}
+	return defProtocol
+}
+
+// defAddr 返回协议对应的默认地址
+func defAddr(protocol string) string {
+	if protocol == ProtocolGRPC {
+		return defGRPCAddr
+	}
+	return defHTTPAddr
+}
+
+// normalizeProtocol 归一化传输协议, 空值保持不变以便继承上层配置
+func normalizeProtocol(protocol string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(protocol)) {
+	case "":
+		return "", nil
+	case ProtocolGRPC:
+		return ProtocolGRPC, nil
+	case ProtocolHTTPProtobuf:
+		return ProtocolHTTPProtobuf, nil
+	default:
+		return "", fmt.Errorf("不支持的传输协议 %q, 可选值: %q, %q", protocol, ProtocolGRPC, ProtocolHTTPProtobuf)
+	}
 }
