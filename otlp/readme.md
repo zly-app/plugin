@@ -21,6 +21,24 @@ otlp on OpenTelemetry
 - 未配置 `Addr` 时取 `http://localhost:4317`(grpc) 或 `http://localhost:4318`(http/protobuf).
 - `Gzip` 在 gRPC 下对应 gRPC 的 gzip 压缩器, 在 HTTP 下对应 `Content-Encoding: gzip`.
 
+# 认证
+
+入口若要求认证(nginx `auth_basic` 或自定义 Bearer token), 用 `Headers` 注入请求头. 插件级为全局默认, `Trace` / `Metric` / `Log` 下可逐个覆盖, 同名键以信号级为准:
+
+```yaml
+plugins:
+  otlp:
+    Headers:
+      Authorization: 'Bearer <token>' # 或 'Basic <base64(user:pass)>'
+    Trace:
+      Headers:
+        X-Tenant: 'team-a' # 追加在全局头之上
+```
+
+- 键名大小写不敏感, 内部统一转小写后再下发(gRPC metadata 要求小写键).
+- HTTP 传输按普通请求头发送; gRPC 传输按 metadata 发送, 同样落到 HTTP/2 的 `authorization` 等头.
+- 认证失败时收集器/网关返回 401, 导出器按 `Retry` 配置重试, 最终失败会以告警日志形式暴露, 不会影响业务主流程.
+
 # 示例
 
 ```go
@@ -77,6 +95,8 @@ plugins:
 plugins:
   otlp:
     Protocol: 'grpc' # 全局传输协议, 可选 grpc / http/protobuf. 各信号的 Protocol 可覆盖它
+    Headers: # 全局附加请求头, 各信号可覆盖/追加
+      Authorization: 'Bearer <token>'
 
     Trace:
       Enabled: true # 是否启用

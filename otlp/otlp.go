@@ -77,7 +77,7 @@ func NewOtlpPlugin(app core.IApp, conf *Config) *OtlpPlugin {
 }
 
 func (o *OtlpPlugin) Trace() {
-	exporter, err := newTraceExporter(o.conf.Trace, o.conf.effectiveProtocol(o.conf.Trace.Protocol))
+	exporter, err := newTraceExporter(o.conf.Trace, o.conf.effectiveProtocol(o.conf.Trace.Protocol), o.conf.mergeHeaders(o.conf.Trace.Headers))
 	if err != nil {
 		o.app.Fatal("无法创建 otlp trace 导出器", zap.Error(err))
 	}
@@ -128,7 +128,7 @@ func (o *OtlpPlugin) Trace() {
 
 func (o *OtlpPlugin) Metrics() {
 	// 定义导出器
-	exporter, err := newMetricExporter(o.conf.Metric, o.conf.effectiveProtocol(o.conf.Metric.Protocol))
+	exporter, err := newMetricExporter(o.conf.Metric, o.conf.effectiveProtocol(o.conf.Metric.Protocol), o.conf.mergeHeaders(o.conf.Metric.Headers))
 	if err != nil {
 		o.app.Fatal("can not create otlp metric exporter", zap.Error(err))
 	}

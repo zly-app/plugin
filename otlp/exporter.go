@@ -25,19 +25,19 @@ import (
 const gzipCompressor = "gzip"
 
 // newTraceExporter 按协议创建 trace 导出器
-func newTraceExporter(conf TraceConfig, protocol string) (tracesdk.SpanExporter, error) {
+func newTraceExporter(conf TraceConfig, protocol string, headers map[string]string) (tracesdk.SpanExporter, error) {
 	switch protocol {
 	case ProtocolGRPC:
-		return newGRPCTraceExporter(conf)
+		return newGRPCTraceExporter(conf, headers)
 	case ProtocolHTTPProtobuf:
-		return newHTTPTraceExporter(conf)
+		return newHTTPTraceExporter(conf, headers)
 	default:
 		return nil, fmt.Errorf("不支持的 otlp trace 传输协议 %q", protocol)
 	}
 }
 
 // newHTTPTraceExporter 创建 OTLP/HTTP trace 导出器
-func newHTTPTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
+func newHTTPTraceExporter(conf TraceConfig, headers map[string]string) (tracesdk.SpanExporter, error) {
 	compress := otlptracehttp.NoCompression
 	if conf.Gzip {
 		compress = otlptracehttp.GzipCompression
@@ -46,6 +46,7 @@ func newHTTPTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
 	return otlptracehttp.New(context.Background(),
 		otlptracehttp.WithEndpointURL(conf.Addr),
 		otlptracehttp.WithURLPath(conf.URLPath),
+		otlptracehttp.WithHeaders(headers),
 		otlptracehttp.WithCompression(compress),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
@@ -57,7 +58,7 @@ func newHTTPTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
 }
 
 // newGRPCTraceExporter 创建 OTLP/gRPC trace 导出器
-func newGRPCTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
+func newGRPCTraceExporter(conf TraceConfig, headers map[string]string) (tracesdk.SpanExporter, error) {
 	target, secure, err := parseGRPCEndpoint(conf.Addr)
 	if err != nil {
 		return nil, err
@@ -65,6 +66,7 @@ func newGRPCTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
 
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(target),
+		otlptracegrpc.WithHeaders(headers),
 		otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
 			InitialInterval: time.Duration(conf.Retry.InitialIntervalSec) * time.Second,
@@ -81,19 +83,19 @@ func newGRPCTraceExporter(conf TraceConfig) (tracesdk.SpanExporter, error) {
 }
 
 // newMetricExporter 按协议创建 metric 导出器
-func newMetricExporter(conf MetricConfig, protocol string) (metricsdk.Exporter, error) {
+func newMetricExporter(conf MetricConfig, protocol string, headers map[string]string) (metricsdk.Exporter, error) {
 	switch protocol {
 	case ProtocolGRPC:
-		return newGRPCMetricExporter(conf)
+		return newGRPCMetricExporter(conf, headers)
 	case ProtocolHTTPProtobuf:
-		return newHTTPMetricExporter(conf)
+		return newHTTPMetricExporter(conf, headers)
 	default:
 		return nil, fmt.Errorf("不支持的 otlp metric 传输协议 %q", protocol)
 	}
 }
 
 // newHTTPMetricExporter 创建 OTLP/HTTP metric 导出器
-func newHTTPMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
+func newHTTPMetricExporter(conf MetricConfig, headers map[string]string) (metricsdk.Exporter, error) {
 	compress := otlpmetrichttp.NoCompression
 	if conf.Gzip {
 		compress = otlpmetrichttp.GzipCompression
@@ -102,6 +104,7 @@ func newHTTPMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
 	return otlpmetrichttp.New(context.Background(),
 		otlpmetrichttp.WithEndpointURL(conf.Addr),
 		otlpmetrichttp.WithURLPath(conf.URLPath),
+		otlpmetrichttp.WithHeaders(headers),
 		otlpmetrichttp.WithCompression(compress),
 		otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
@@ -113,7 +116,7 @@ func newHTTPMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
 }
 
 // newGRPCMetricExporter 创建 OTLP/gRPC metric 导出器
-func newGRPCMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
+func newGRPCMetricExporter(conf MetricConfig, headers map[string]string) (metricsdk.Exporter, error) {
 	target, secure, err := parseGRPCEndpoint(conf.Addr)
 	if err != nil {
 		return nil, err
@@ -121,6 +124,7 @@ func newGRPCMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
 
 	opts := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(target),
+		otlpmetricgrpc.WithHeaders(headers),
 		otlpmetricgrpc.WithRetry(otlpmetricgrpc.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
 			InitialInterval: time.Duration(conf.Retry.InitialIntervalSec) * time.Second,
@@ -137,19 +141,19 @@ func newGRPCMetricExporter(conf MetricConfig) (metricsdk.Exporter, error) {
 }
 
 // newLogExporter 按协议创建 log 导出器
-func newLogExporter(conf LogConfig, protocol string) (logsdk.Exporter, error) {
+func newLogExporter(conf LogConfig, protocol string, headers map[string]string) (logsdk.Exporter, error) {
 	switch protocol {
 	case ProtocolGRPC:
-		return newGRPCLogExporter(conf)
+		return newGRPCLogExporter(conf, headers)
 	case ProtocolHTTPProtobuf:
-		return newHTTPLogExporter(conf)
+		return newHTTPLogExporter(conf, headers)
 	default:
 		return nil, fmt.Errorf("不支持的 otlp log 传输协议 %q", protocol)
 	}
 }
 
 // newHTTPLogExporter 创建 OTLP/HTTP log 导出器
-func newHTTPLogExporter(conf LogConfig) (logsdk.Exporter, error) {
+func newHTTPLogExporter(conf LogConfig, headers map[string]string) (logsdk.Exporter, error) {
 	compress := otlploghttp.NoCompression
 	if conf.Gzip {
 		compress = otlploghttp.GzipCompression
@@ -158,6 +162,7 @@ func newHTTPLogExporter(conf LogConfig) (logsdk.Exporter, error) {
 	return otlploghttp.New(context.Background(),
 		otlploghttp.WithEndpointURL(conf.Addr),
 		otlploghttp.WithURLPath(conf.URLPath),
+		otlploghttp.WithHeaders(headers),
 		otlploghttp.WithCompression(compress),
 		otlploghttp.WithRetry(otlploghttp.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
@@ -169,7 +174,7 @@ func newHTTPLogExporter(conf LogConfig) (logsdk.Exporter, error) {
 }
 
 // newGRPCLogExporter 创建 OTLP/gRPC log 导出器
-func newGRPCLogExporter(conf LogConfig) (logsdk.Exporter, error) {
+func newGRPCLogExporter(conf LogConfig, headers map[string]string) (logsdk.Exporter, error) {
 	target, secure, err := parseGRPCEndpoint(conf.Addr)
 	if err != nil {
 		return nil, err
@@ -177,6 +182,7 @@ func newGRPCLogExporter(conf LogConfig) (logsdk.Exporter, error) {
 
 	opts := []otlploggrpc.Option{
 		otlploggrpc.WithEndpoint(target),
+		otlploggrpc.WithHeaders(headers),
 		otlploggrpc.WithRetry(otlploggrpc.RetryConfig{
 			Enabled:         conf.Retry.Enabled,
 			InitialInterval: time.Duration(conf.Retry.InitialIntervalSec) * time.Second,

@@ -49,7 +49,7 @@ func (p *logPlugin) Init() {
 }
 
 func (p *logPlugin) Log() {
-	exporter, err := newLogExporter(p.conf.Log, p.conf.effectiveProtocol(p.conf.Log.Protocol))
+	exporter, err := newLogExporter(p.conf.Log, p.conf.effectiveProtocol(p.conf.Log.Protocol), p.conf.mergeHeaders(p.conf.Log.Headers))
 	if err != nil {
 		p.app.Fatal("无法创建 otlp log 导出器", zap.Error(err))
 	}

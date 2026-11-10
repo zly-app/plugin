@@ -57,11 +57,12 @@ type RetryConfig struct {
 	MaxElapsedTimeSec  int64 // 超过这个秒数后则放弃这一批数据
 }
 type LogConfig struct {
-	Enabled  bool   // 是否启用
-	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
-	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
-	URLPath  string // path, 如 /v1/logs. 仅 http/protobuf 生效
-	Gzip     bool   // 是否启用gzip压缩
+	Enabled  bool              // 是否启用
+	Protocol string            // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string            // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string            // path, 如 /v1/logs. 仅 http/protobuf 生效
+	Gzip     bool              // 是否启用gzip压缩
+	Headers  map[string]string // 附加请求头(如认证信息), 与全局 Headers 合并, 同名覆盖
 
 	SpanQueueSize  int // 待上传的span队列大小. 超出的log会被丢弃
 	SpanBatchSize  int // log信息批次发送大小, 存满后一次性发送
@@ -71,11 +72,12 @@ type LogConfig struct {
 	Retry RetryConfig // 重试配置
 }
 type TraceConfig struct {
-	Enabled  bool   // 是否启用
-	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
-	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
-	URLPath  string // path, 如 /v1/traces. 仅 http/protobuf 生效
-	Gzip     bool   // 是否启用gzip压缩
+	Enabled  bool              // 是否启用
+	Protocol string            // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string            // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string            // path, 如 /v1/traces. 仅 http/protobuf 生效
+	Gzip     bool              // 是否启用gzip压缩
+	Headers  map[string]string // 附加请求头(如认证信息), 与全局 Headers 合并, 同名覆盖
 
 	SamplerFraction      float64 // 采样器采样率, <= 0.0 表示不采样, 1.0 表示总是采样
 	SpanQueueSize        int     // 待上传的span队列大小. 超出的span会被丢弃
@@ -87,11 +89,12 @@ type TraceConfig struct {
 	Retry RetryConfig // 重试配置
 }
 type MetricConfig struct {
-	Enabled  bool   // 是否启用
-	Protocol string // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
-	Addr     string // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
-	URLPath  string // path, 如 /v1/metrics. 仅 http/protobuf 生效
-	Gzip     bool   // 是否启用gzip压缩
+	Enabled  bool              // 是否启用
+	Protocol string            // 传输协议, 可选 grpc / http/protobuf, 为空时使用全局 Protocol
+	Addr     string            // 地址, 如 http://localhost:4318(HTTP) 或 localhost:4317(gRPC)
+	URLPath  string            // path, 如 /v1/metrics. 仅 http/protobuf 生效
+	Gzip     bool              // 是否启用gzip压缩
+	Headers  map[string]string // 附加请求头(如认证信息), 与全局 Headers 合并, 同名覆盖
 
 	ProcessCollector bool // 启用进程收集器
 	GoCollector      bool // 启用go收集器
@@ -103,9 +106,10 @@ type MetricConfig struct {
 }
 
 type Config struct {
-	Protocol string      // 全局默认传输协议, 可选 grpc / http/protobuf, 为空时使用 grpc
-	Log      LogConfig   // log 配置
-	Trace    TraceConfig // trace 配置
+	Protocol string            // 全局默认传输协议, 可选 grpc / http/protobuf, 为空时使用 grpc
+	Headers  map[string]string // 全局附加请求头(如认证信息), 各信号可覆盖
+	Log      LogConfig         // log 配置
+	Trace    TraceConfig       // trace 配置
 	Metric   MetricConfig
 }
 
@@ -273,6 +277,21 @@ func (conf *Config) effectiveProtocol(signalProtocol string) string {
 		return conf.Protocol
 	}
 	return defProtocol
+}
+
+// mergeHeaders 合并全局与信号级请求头, 键统一转小写(gRPC metadata 要求小写), 信号级覆盖全局
+func (conf *Config) mergeHeaders(signal map[string]string) map[string]string {
+	if len(conf.Headers) == 0 && len(signal) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(conf.Headers)+len(signal))
+	for k, v := range conf.Headers {
+		out[strings.ToLower(strings.TrimSpace(k))] = v
+	}
+	for k, v := range signal {
+		out[strings.ToLower(strings.TrimSpace(k))] = v
+	}
+	return out
 }
 
 // defAddr 返回协议对应的默认地址
